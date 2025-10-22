@@ -9,13 +9,26 @@ export default function RootLayout() {
           headerShown: false,
         }}
       />
-      {/* <Stack.Screen
-        name="login"
+      <Stack.Screen
+        name="product/[id]"
         options={{
-          presentation: "modal",
-          title: "Đăng nhập",
+          headerShown: false,
         }}
-      /> */}
+      />
+      <Stack.Screen
+        name="(auth)/register"
+        options={{
+          title: "Đăng nhập",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="(auth)/login"
+        options={{
+          title: "Đăng nhập",
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

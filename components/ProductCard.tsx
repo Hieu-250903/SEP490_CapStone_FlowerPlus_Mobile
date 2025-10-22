@@ -1,6 +1,7 @@
+import { Product } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Product } from '../types';
 
 interface ProductCardProps {
   product: Product;
@@ -8,6 +9,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onPress }: ProductCardProps) {
+  const router = useRouter();
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -15,9 +18,15 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
     }).format(price);
   };
 
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else {
+      router.push(`/product/${product.id}`);
+    }
+  };
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      {/* Image Container */}
+    <TouchableOpacity style={styles.card} onPress={handlePress} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
         <Image 
           source={{ uri: product.image }} 
@@ -25,7 +34,6 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
           resizeMode="cover"
         />
         
-        {/* Label Badge */}
         {product.label && (
           <View 
             style={[
@@ -37,20 +45,17 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
           </View>
         )}
 
-        {/* Discount Badge */}
         {product.discount > 0 && (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>-{product.discount}%</Text>
           </View>
         )}
 
-        {/* Favorite Icon */}
         <TouchableOpacity style={styles.favoriteButton}>
           <Ionicons name="heart-outline" size={20} color="#FFF" />
         </TouchableOpacity>
       </View>
 
-      {/* Product Info */}
       <View style={styles.infoContainer}>
         <Text style={styles.productName} numberOfLines={2}>
           {product.name}
@@ -67,7 +72,6 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
           )}
         </View>
 
-        {/* Add to Cart Button */}
         <TouchableOpacity style={styles.addButton}>
           <Ionicons name="cart-outline" size={18} color="#FFF" />
           <Text style={styles.addButtonText}>Thêm</Text>
@@ -143,6 +147,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 8,
     lineHeight: 20,
+    minHeight: 40,
   },
   priceContainer: {
     flexDirection: 'row',
