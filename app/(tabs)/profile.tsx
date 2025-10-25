@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
@@ -10,48 +11,93 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { authService, userProfileApi } from "../../services/auth";
 
 export default function ProfileScreen() {
-  const [user, setUser] = useState({
-    name: "Nguyễn Văn A",
-    email: "user@example.com",
-    phone: "0909 123 456",
-    avatar: null,
-  });
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchUserData = async () => {
+    try {
+      const userData = await userProfileApi();
+      console.log("User data:", userData);
+
+      if (userData.success && userData.data) {
+        setUser(userData.data);
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
       const checkAuth = async () => {
-        const isLoggedIn = false;
-        
+        setIsLoading(true);
+        const isLoggedIn = await authService.isAuthenticated();
+
         if (!isLoggedIn) {
           router.replace("/(auth)/login");
+        } else {
+          await fetchUserData();
         }
+        setIsLoading(false);
       };
-      
+
       checkAuth();
     }, [])
   );
 
   const handleLogout = () => {
-    Alert.alert(
-      "Đăng xuất",
-      "Bạn có chắc chắn muốn đăng xuất?",
-      [
-        {
-          text: "Hủy",
-          style: "cancel"
+    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
+      {
+        text: "Hủy",
+        style: "cancel",
+      },
+      {
+        text: "Đăng xuất",
+        style: "destructive",
+        onPress: async () => {
+          await authService.clearAuth();
+          router.replace("/(auth)/login");
         },
-        {
-          text: "Đăng xuất",
-          style: "destructive",
-          onPress: () => {
-            router.replace("/(auth)/login");
-          }
-        }
-      ]
-    );
+      },
+    ]);
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#047857" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#D1D5DB" />
+          <Text style={styles.errorText}>
+            Không thể tải thông tin người dùng
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const getGenderDisplay = (gender: string) => {
+    const genderMap: any = {
+      MALE: { text: "Nam", icon: "♂️" },
+      FEMALE: { text: "Nữ", icon: "♀️" },
+      OTHER: { text: "Khác", icon: "⚧️" },
+    };
+    return genderMap[gender] || { text: "Chưa cập nhật", icon: "" };
+  };
+
+  const genderInfo = getGenderDisplay(user.gender);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -63,10 +109,33 @@ export default function ProfileScreen() {
               <Ionicons name="camera" size={20} color="#FFF" />
             </TouchableOpacity>
           </View>
-          
-          <Text style={styles.userName}>{user.name}</Text>
+
+          <Text style={styles.userName}>{user.name || "Người dùng"}</Text>
           <Text style={styles.userEmail}>{user.email}</Text>
-          <Text style={styles.userPhone}>{user.phone}</Text>
+          <Text style={styles.userPhone}>{user.phone || "Chưa cập nhật"}</Text>
+
+          {user.gender && (
+            <View style={styles.userInfoRow}>
+              <Text style={styles.userInfoLabel}>
+                {genderInfo.icon} {genderInfo.text}
+              </Text>
+              {user.age > 0 && (
+                <>
+                  <Text style={styles.userInfoSeparator}>•</Text>
+                  <Text style={styles.userInfoLabel}>{user.age} tuổi</Text>
+                </>
+              )}
+            </View>
+          )}
+
+          {user.address && (
+            <View style={styles.addressContainer}>
+              <Ionicons name="location" size={14} color="#6B7280" />
+              <Text style={styles.addressText} numberOfLines={2}>
+                {user.address}
+              </Text>
+            </View>
+          )}
 
           <TouchableOpacity style={styles.editButton}>
             <Ionicons name="create-outline" size={18} color="#047857" />
@@ -170,10 +239,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={22} color="#EF4444" />
           <Text style={styles.logoutText}>Đăng xuất</Text>
         </TouchableOpacity>
@@ -205,9 +271,7 @@ function MenuItem({
         </View>
         <View style={styles.menuItemContent}>
           <Text style={styles.menuItemTitle}>{title}</Text>
-          {subtitle && (
-            <Text style={styles.menuItemSubtitle}>{subtitle}</Text>
-          )}
+          {subtitle && <Text style={styles.menuItemSubtitle}>{subtitle}</Text>}
         </View>
       </View>
       <View style={styles.menuItemRight}>
@@ -266,7 +330,40 @@ const styles = StyleSheet.create({
   userPhone: {
     fontSize: 14,
     color: "#6B7280",
-    marginBottom: 16,
+    marginBottom: 8,
+  },
+  userInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 8,
+    gap: 8,
+  },
+  userInfoLabel: {
+    fontSize: 13,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  userInfoSeparator: {
+    color: "#D1D5DB",
+  },
+  addressContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 8,
+    maxWidth: "90%",
+  },
+  addressText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#6B7280",
+    lineHeight: 16,
   },
   editButton: {
     flexDirection: "row",
@@ -277,6 +374,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#047857",
     gap: 6,
+    marginTop: 8,
   },
   editButtonText: {
     color: "#047857",
@@ -397,5 +495,16 @@ const styles = StyleSheet.create({
     color: "#EF4444",
     fontSize: 16,
     fontWeight: "600",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#6B7280",
+    marginTop: 16,
   },
 });
