@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
 const instance = axios.create({
-  baseURL: "https://flower.autopass.blog/swagger-ui/index.html#/",
+  baseURL: "https://flower.autopass.blog/",
 });
 
 instance.interceptors.request.use(
