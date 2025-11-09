@@ -29,6 +29,13 @@ export default function RootLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="(screen)/CheckoutScreen"
+        options={{
+          title: "Thanh toán",
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
