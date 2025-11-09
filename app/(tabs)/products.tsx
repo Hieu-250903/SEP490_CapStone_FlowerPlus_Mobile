@@ -1,16 +1,19 @@
 import ProductCard from "@/components/ProductCard";
-import { CATEGORIES, PRODUCTS } from "@/constants/Products";
+import { getAllCategories } from "@/services/categories";
+import { getAllProduct } from "@/services/product";
+import { Category, Product } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -24,6 +27,71 @@ export default function ProductsScreen() {
   const [priceRange, setPriceRange] = useState<PriceRange>("all");
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showSortModal, setShowSortModal] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize] = useState(10);
+  const [hasNext, setHasNext] = useState(false);
+  const [totalRecords, setTotalRecords] = useState(0);
+
+  useEffect(() => {
+    fetchCategories();
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [pageNumber, selectedCategory]);
+
+  const fetchProducts = async () => {
+    if (loading) return;
+
+    setLoading(true);
+    try {
+      const params: any = {
+        active: true,
+        pageNumber: pageNumber - 1, // API dùng index 0
+        pageSize,
+      };
+
+      if (selectedCategory) {
+        const category = categories.find((c) => c.name === selectedCategory);
+        if (category) {
+          params.categoryId = category.id;
+        }
+      }
+
+      const res = await getAllProduct(params);
+
+      if (res?.data) {
+        if (pageNumber === 1) {
+          setProducts(res.data.listObjects);
+        } else {
+          setProducts((prev) => [...prev, ...res.data.listObjects]);
+        }
+        setHasNext(res.data.hasNext);
+        setTotalRecords(res.data.totalRecords);
+      }
+    } catch (error) {
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    const res = await getAllCategories();
+    if (res?.data) {
+      setCategories(res.data);
+    }
+  };
+
+  const loadMore = () => {
+    if (hasNext && !loading) {
+      setPageNumber((prev) => prev + 1);
+    }
+  };
 
   const sortOptions = [
     { value: "default", label: "Mặc định", icon: "list-outline" },
@@ -46,7 +114,7 @@ export default function ProductsScreen() {
   ];
 
   const getFilteredProducts = () => {
-    let filtered = [...PRODUCTS];
+    let filtered = [...products];
 
     if (searchQuery) {
       filtered = filtered.filter((p) =>
@@ -54,13 +122,9 @@ export default function ProductsScreen() {
       );
     }
 
-    if (selectedCategory) {
-      filtered = filtered.filter((p) => p.category === selectedCategory);
-    }
-
     if (priceRange !== "all") {
       filtered = filtered.filter((p) => {
-        const price = p.discountedPrice;
+        const price = p.discountPrice || p.price;
         switch (priceRange) {
           case "0-300":
             return price < 300000;
@@ -78,10 +142,14 @@ export default function ProductsScreen() {
 
     switch (sortBy) {
       case "price-asc":
-        filtered.sort((a, b) => a.discountedPrice - b.discountedPrice);
+        filtered.sort(
+          (a, b) => (a.discountPrice || a.price) - (b.discountPrice || b.price)
+        );
         break;
       case "price-desc":
-        filtered.sort((a, b) => b.discountedPrice - a.discountedPrice);
+        filtered.sort(
+          (a, b) => (b.discountPrice || b.price) - (a.discountPrice || a.price)
+        );
         break;
       case "name":
         filtered.sort((a, b) => a.name.localeCompare(b.name));
@@ -105,6 +173,16 @@ export default function ProductsScreen() {
     setPriceRange("all");
     setSortBy("default");
     setSearchQuery("");
+    setPageNumber(1);
+  };
+
+  const renderFooter = () => {
+    if (!loading) return null;
+    return (
+      <View style={styles.loadingFooter}>
+        <ActivityIndicator size="small" color="#047857" />
+      </View>
+    );
   };
 
   return (
@@ -183,9 +261,7 @@ export default function ProductsScreen() {
       </View>
 
       <View style={styles.resultsBar}>
-        <Text style={styles.resultsText}>
-          {filteredProducts.length} sản phẩm
-        </Text>
+        <Text style={styles.resultsText}>{totalRecords} sản phẩm</Text>
         {activeFiltersCount > 0 && (
           <TouchableOpacity onPress={clearFilters}>
             <Text style={styles.clearFiltersText}>Xóa lọc</Text>
@@ -200,22 +276,30 @@ export default function ProductsScreen() {
         contentContainerStyle={styles.productsList}
         columnWrapperStyle={styles.productRow}
         showsVerticalScrollIndicator={false}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
         renderItem={({ item }) => (
           <View style={styles.productItem}>
             <ProductCard product={item} />
           </View>
         )}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={64} color="#D1D5DB" />
-            <Text style={styles.emptyTitle}>Không tìm thấy sản phẩm</Text>
-            <Text style={styles.emptyText}>
-              Thử thay đổi từ khóa hoặc bộ lọc
-            </Text>
-            <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
-              <Text style={styles.clearButtonText}>Xóa bộ lọc</Text>
-            </TouchableOpacity>
-          </View>
+          !loading ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={64} color="#D1D5DB" />
+              <Text style={styles.emptyTitle}>Không tìm thấy sản phẩm</Text>
+              <Text style={styles.emptyText}>
+                Thử thay đổi từ khóa hoặc bộ lọc
+              </Text>
+              <TouchableOpacity
+                style={styles.clearButton}
+                onPress={clearFilters}
+              >
+                <Text style={styles.clearButtonText}>Xóa bộ lọc</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
         }
       />
 
@@ -242,7 +326,10 @@ export default function ProductsScreen() {
                     styles.filterOption,
                     !selectedCategory && styles.filterOptionActive,
                   ]}
-                  onPress={() => setSelectedCategory(null)}
+                  onPress={() => {
+                    setSelectedCategory(null);
+                    setPageNumber(1);
+                  }}
                 >
                   <Text
                     style={[
@@ -256,7 +343,7 @@ export default function ProductsScreen() {
                     <Ionicons name="checkmark" size={20} color="#047857" />
                   )}
                 </TouchableOpacity>
-                {CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <TouchableOpacity
                     key={cat.id}
                     style={[
@@ -264,9 +351,11 @@ export default function ProductsScreen() {
                       selectedCategory === cat.name &&
                         styles.filterOptionActive,
                     ]}
-                    onPress={() => setSelectedCategory(cat.name)}
+                    onPress={() => {
+                      setSelectedCategory(cat.name);
+                      setPageNumber(1);
+                    }}
                   >
-                    <Text style={styles.filterOptionEmoji}>{cat.icon}</Text>
                     <Text
                       style={[
                         styles.filterOptionText,
@@ -536,6 +625,10 @@ const styles = StyleSheet.create({
   productItem: {
     width: "48%",
   },
+  loadingFooter: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
@@ -613,9 +706,6 @@ const styles = StyleSheet.create({
   },
   filterOptionActive: {
     backgroundColor: "#D1FAE5",
-  },
-  filterOptionEmoji: {
-    fontSize: 20,
   },
   filterOptionText: {
     flex: 1,
