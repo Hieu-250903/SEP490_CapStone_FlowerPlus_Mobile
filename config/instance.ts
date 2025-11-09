@@ -1,13 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { router } from "expo-router";
 
 const instance = axios.create({
-  baseURL: "https://flower.autopass.blog/",
+  baseURL: "http://flower.autopass.blog/api",
 });
 
 instance.interceptors.request.use(
   async function (config) {
-    const token = await AsyncStorage.getItem("token");
+    const token = await AsyncStorage.getItem("auth_token");
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
@@ -22,7 +23,17 @@ instance.interceptors.response.use(
   function (response) {
     return response.data;
   },
-  function (error) {
+  async function (error) {
+    const status = error?.response?.status;
+
+    if (status === 401 || status === 403) {
+      console.log("Token invalid or expired, redirecting to login...");
+
+      await AsyncStorage.multiRemove(["auth_token", "user_data"]);
+
+      router.replace("/(auth)/login");
+    }
+
     return Promise.reject(error);
   }
 );
