@@ -36,10 +36,7 @@ export default function LoginScreen() {
         password: password,
       });
       if (res.success && res.data) {
-        await authService.saveAuth(res.data.token, {
-          email: res.data.email,
-          role: res.data.role,
-        });
+        await authService.saveAuth(res.data.accessToken);
 
         Alert.alert("Thành công", res.message || "Đăng nhập thành công", [
           {
@@ -51,7 +48,6 @@ export default function LoginScreen() {
         Alert.alert("Lỗi", res.message || "Đăng nhập thất bại");
       }
     } catch (error: any) {
-      console.error("Login error:", error);
       Alert.alert("Lỗi", "Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {
       setIsLoading(false);

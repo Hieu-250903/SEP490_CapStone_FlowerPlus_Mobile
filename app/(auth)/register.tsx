@@ -110,7 +110,7 @@ export default function RegisterScreen() {
         Alert.alert('Lỗi', res.message || 'Đăng ký thất bại');
       }
     } catch (error: any) {
-      console.error('Register error:', error);
+      console.log('Register error:', error);
       const errorMessage = error.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
       Alert.alert('Lỗi', errorMessage);
     } finally {
