@@ -2,13 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { authService, userProfileApi } from "../../services/auth";
@@ -20,13 +20,14 @@ export default function ProfileScreen() {
   const fetchUserData = async () => {
     try {
       const userData = await userProfileApi();
-      console.log("User data:", userData);
-
-      if (userData.success && userData.data) {
+      if (userData && userData?.success && userData?.data) {
         setUser(userData.data);
+      } else {
+        authService.clearAuth();
+        router.replace("/(auth)/login");
       }
     } catch (error) {
-      console.error("Error fetching user data:", error);
+      console.log("Error fetching user data:", error);
     }
   };
 
@@ -35,8 +36,9 @@ export default function ProfileScreen() {
       const checkAuth = async () => {
         setIsLoading(true);
         const isLoggedIn = await authService.isAuthenticated();
-
-        if (!isLoggedIn) {
+        const token = await authService.getToken();
+        console.log("isLoggedIn:", isLoggedIn, "token:", token);
+        if (!isLoggedIn || !token) {
           router.replace("/(auth)/login");
         } else {
           await fetchUserData();
