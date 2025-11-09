@@ -1,18 +1,14 @@
-const getAllCategories = async (params: {
-  keyword: number;
-  pageLnumber: number;
-  size: number;
-}) => {
+import instance from "@/config/instance";
+
+export const getAllCategories = async () => {
   try {
-    const response = await instance.get("/categories", {
-      params: params,
-    });
+    const response = await instance.get("/categories/tree");
     return response;
   } catch (error) {
     throw error;
   }
 };
-const getDetailCategory = async (id: string) => {
+export const getDetailCategory = async (id: string) => {
   try {
     const response = await instance.get(`/categories/${id}`);
     return response;
@@ -20,4 +16,3 @@ const getDetailCategory = async (id: string) => {
     throw error;
   }
 };
-module.exports = { getAllCategories, getDetailCategory };

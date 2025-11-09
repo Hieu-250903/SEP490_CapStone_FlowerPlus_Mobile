@@ -1,6 +1,16 @@
+import { addToCart } from "@/services/cart";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Product } from "../../types";
 
 interface ProductCardProps {
@@ -10,6 +20,7 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, onPress }: ProductCardProps) {
   const router = useRouter();
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -26,9 +37,42 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
     }
   };
 
-  const handleAddToCart = () => {
-    console.log("Thêm vào giỏ hàng:", product);
+  const handleAddToCart = async (e: any) => {
+    e.stopPropagation();
+
+    if (isAddingToCart) return;
+
+    setIsAddingToCart(true);
+    try {
+      const response = await addToCart({
+        productId: product.id,
+        quantity: 1,
+      });
+
+      if (response?.success) {
+        Alert.alert("Thành công", "Đã thêm sản phẩm vào giỏ hàng", [
+          { text: "OK" },
+        ]);
+      }
+    } catch (error: any) {
+      console.log("Error adding to cart:", error);
+      Alert.alert(
+        "Lỗi",
+        error?.message || "Không thể thêm vào giỏ hàng. Vui lòng thử lại.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
+
+  const hasDiscount =
+    product.discountPrice && product.discountPrice < product.price;
+  const discountPercent = hasDiscount
+    ? Math.round(
+        ((product.price - product.discountPrice) / product.price) * 100
+      )
+    : 0;
 
   return (
     <TouchableOpacity
@@ -43,30 +87,52 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
           resizeMode="cover"
         />
 
-        {product.discount > 0 && (
+        {discountPercent > 0 && (
           <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>-{product.discount}%</Text>
+            <Text style={styles.discountText}>-{discountPercent}%</Text>
           </View>
         )}
 
-        <TouchableOpacity style={styles.cartButton} onPress={handleAddToCart}>
-          <Ionicons name="cart" size={18} color="#BE123C" />
+        <TouchableOpacity
+          style={styles.cartButton}
+          onPress={handleAddToCart}
+          disabled={isAddingToCart}
+        >
+          {isAddingToCart ? (
+            <ActivityIndicator size="small" color="#BE123C" />
+          ) : (
+            <Ionicons name="cart" size={18} color="#BE123C" />
+          )}
         </TouchableOpacity>
       </View>
 
       <View style={styles.infoContainer}>
-        <Text style={styles.productName} numberOfLines={2}>
-          {product.name}
-        </Text>
+        <View style={styles.nameContainer}>
+          <Text
+            style={styles.productName}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {product.name}
+          </Text>
+        </View>
+
+        <View style={styles.descriptionContainer}>
+          <Text
+            style={styles.description}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {product.description || "Không có mô tả"}
+          </Text>
+        </View>
 
         <View style={styles.priceContainer}>
-          {product.originalPrice !== product.discountedPrice && (
-            <Text style={styles.originalPrice}>
-              {formatPrice(product.originalPrice)}
-            </Text>
+          {hasDiscount && (
+            <Text style={styles.price}>{formatPrice(product.price)}</Text>
           )}
           <Text style={styles.discountedPrice}>
-            {formatPrice(product.discountedPrice)}
+            {formatPrice(product.discountPrice || product.price)}
           </Text>
         </View>
       </View>
@@ -130,19 +196,31 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     padding: 12,
+    height: 120,
+  },
+  nameContainer: {
+    height: 36,
+    marginBottom: 4,
   },
   productName: {
     fontSize: 13,
     fontWeight: "600",
     color: "#1F2937",
-    marginBottom: 8,
     lineHeight: 18,
-    minHeight: 36,
+  },
+  descriptionContainer: {
+    height: 32,
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 11,
+    color: "#6B7280",
+    lineHeight: 16,
   },
   priceContainer: {
     gap: 4,
   },
-  originalPrice: {
+  price: {
     fontSize: 12,
     color: "#9CA3AF",
     textDecorationLine: "line-through",
