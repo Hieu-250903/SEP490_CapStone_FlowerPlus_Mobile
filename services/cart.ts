@@ -25,7 +25,7 @@ export const updateCartItem = async (
   data: UpdateCartItemRequest
 ) => {
   try {
-    const response = await instance.patch(`/cart/items/${itemId}`, data, {
+    const response = await instance.put(`/cart/items/${itemId}`, data, {
       params: { userId },
     });
     return response;
