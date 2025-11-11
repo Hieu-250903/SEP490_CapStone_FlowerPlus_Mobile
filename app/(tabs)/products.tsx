@@ -52,7 +52,7 @@ export default function ProductsScreen() {
     try {
       const params: any = {
         active: true,
-        pageNumber: pageNumber - 1, // API dùng index 0
+        pageNumber: pageNumber - 1,
         pageSize,
       };
 

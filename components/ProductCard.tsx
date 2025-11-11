@@ -21,6 +21,23 @@ interface ProductCardProps {
 export default function ProductCard({ product, onPress }: ProductCardProps) {
   const router = useRouter();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  console.log("ProductCard render:", product);
+
+  // Parse images from JSON string and get the first image
+  const getProductImage = () => {
+    try {
+      if (product.images) {
+        const imageArray = JSON.parse(product.images);
+        return imageArray[0] || "https://via.placeholder.com/400";
+      }
+      return product.image || "https://via.placeholder.com/400";
+    } catch (error) {
+      console.log("Error parsing images:", error);
+      return product.image || "https://via.placeholder.com/400";
+    }
+  };
+
+  const productImage = getProductImage();
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -82,7 +99,7 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
     >
       <View style={styles.imageContainer}>
         <Image
-          source={{ uri: product.image }}
+          source={{ uri: productImage }}
           style={styles.image}
           resizeMode="cover"
         />

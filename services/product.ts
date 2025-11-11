@@ -17,3 +17,13 @@ export const getAllProduct = async (params: {
     throw error;
   }
 };
+export const getProductDetail = async (productId: number) => {
+  try {
+    const response = await instance.get(
+      `/products/get-product-by-id?id=${productId}`
+    );
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};

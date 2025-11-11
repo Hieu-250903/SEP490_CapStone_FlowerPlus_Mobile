@@ -1,16 +1,19 @@
 import { PRODUCTS } from "@/constants/Products";
+import { addToCart } from "@/services/cart";
+import { getProductDetail } from "@/services/product";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-    Dimensions,
-    Image,
-    Linking,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Dimensions,
+  Image,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -30,8 +33,59 @@ export default function ProductDetailScreen() {
     "desc"
   );
   const [isFavorite, setIsFavorite] = useState(false);
+  const [product, setProduct] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const product = PRODUCTS.find((p) => p.id === Number(id));
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getProductDetail(Number(id));
+        if (response.data) {
+          console.log("Product details:", response.data);
+          setProduct(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching product details:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProduct();
+  }, [id]);
+
+  const handleAddToCart = async () => {
+    try {
+      const response = await addToCart({
+        productId: product.id,
+        quantity: 1,
+      });
+      if (response?.success) {
+        Alert.alert("Thành công", "Đã thêm sản phẩm vào giỏ hàng", [
+          { text: "OK" },
+        ]);
+      }
+    } catch (error: any) {
+      console.log("Error adding to cart:", error);
+      Alert.alert(
+        "Lỗi",
+        error?.message || "Không thể thêm vào giỏ hàng. Vui lòng thử lại.",
+        [{ text: "OK" }]
+      );
+    }
+  };
+  const handleCheckout = () => {
+    router.push("/(tabs)/cart");
+  };
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Đang tải...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!product) {
     return (
@@ -53,11 +107,17 @@ export default function ProductDetailScreen() {
     );
   }
 
-  const relatedProducts = PRODUCTS.filter(
-    (p) => p.category === product.category && p.id !== product.id
-  ).slice(0, 4);
+  const productImages = product.images ? JSON.parse(product.images) : [];
+  const galleryImages = productImages.length > 0 ? productImages : [];
+  const mainImage = galleryImages[0] || "https://via.placeholder.com/400";
 
-  const galleryImages = [product.image, product.image, product.image];
+  const categoryName = product.categories?.[0]?.name || "Chưa phân loại";
+
+  const isInStock = product.stock > 0;
+
+  const relatedProducts = PRODUCTS.filter(
+    (p) => p.category === categoryName && p.id !== product.id
+  ).slice(0, 4);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -107,18 +167,10 @@ export default function ProductDetailScreen() {
         <View style={styles.imageSection}>
           <View style={styles.mainImageContainer}>
             <Image
-              source={{ uri: product.image }}
+              source={{ uri: mainImage }}
               style={styles.mainImage}
               resizeMode="cover"
             />
-
-            {product.discount > 0 && (
-              <View style={styles.discountBadgeDetail}>
-                <Text style={styles.discountBadgeText}>
-                  -{product.discount}%
-                </Text>
-              </View>
-            )}
 
             <View style={styles.freshBadge}>
               <Ionicons name="leaf" size={14} color="#059669" />
@@ -137,22 +189,26 @@ export default function ProductDetailScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.thumbnails}
-          >
-            {galleryImages.map((img, idx) => (
-              <TouchableOpacity key={idx} style={styles.thumbnail}>
-                <Image source={{ uri: img }} style={styles.thumbnailImage} />
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {galleryImages.length > 1 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.thumbnails}
+            >
+              {galleryImages.map((img, idx) => (
+                <TouchableOpacity key={idx} style={styles.thumbnail}>
+                  <Image source={{ uri: img }} style={styles.thumbnailImage} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
         </View>
 
         <View style={styles.contentSection}>
           <View style={styles.breadcrumb}>
             <Text style={styles.breadcrumbText}>Trang chủ</Text>
+            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            <Text style={styles.breadcrumbText}>{categoryName}</Text>
             <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
             <Text style={styles.breadcrumbText}>Chi tiết</Text>
           </View>
@@ -163,25 +219,25 @@ export default function ProductDetailScreen() {
             <View style={styles.newBadge}>
               <Text style={styles.newBadgeText}>New 100%</Text>
             </View>
-          </View>
-
-          <View style={styles.priceCard}>
-            {product.originalPrice !== product.discountedPrice && (
-              <Text style={styles.originalPriceDetail}>
-                {formatVND(product.originalPrice)}
-              </Text>
-            )}
-            <Text style={styles.currentPrice}>
-              {formatVND(product.discountedPrice)}
-            </Text>
-            {product.originalPrice !== product.discountedPrice && (
-              <View style={styles.savingBadge}>
-                <Text style={styles.savingText}>
-                  Tiết kiệm{" "}
-                  {formatVND(product.originalPrice - product.discountedPrice)}
+            {isInStock ? (
+              <View style={styles.stockBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#059669" />
+                <Text style={styles.stockBadgeText}>
+                  Còn hàng ({product.stock})
+                </Text>
+              </View>
+            ) : (
+              <View style={[styles.stockBadge, styles.outOfStock]}>
+                <Ionicons name="close-circle" size={14} color="#EF4444" />
+                <Text style={[styles.stockBadgeText, styles.outOfStockText]}>
+                  Hết hàng
                 </Text>
               </View>
             )}
+          </View>
+
+          <View style={styles.priceCard}>
+            <Text style={styles.currentPrice}>{formatVND(product.price)}</Text>
             <Text style={styles.priceNote}>
               Giá đã bao gồm giấy gói & thiệp viết tay theo yêu cầu
             </Text>
@@ -195,13 +251,15 @@ export default function ProductDetailScreen() {
               </View>
               <View style={styles.infoItem}>
                 <Text style={styles.infoLabel}>Tình trạng</Text>
-                <Text style={styles.infoValue}>Cắm mới</Text>
+                <Text style={styles.infoValue}>
+                  {isInStock ? "Còn hàng" : "Hết hàng"}
+                </Text>
               </View>
             </View>
             <View style={styles.infoRow}>
               <View style={styles.infoItem}>
                 <Text style={styles.infoLabel}>Danh mục</Text>
-                <Text style={styles.infoValue}>{product.category}</Text>
+                <Text style={styles.infoValue}>{categoryName}</Text>
               </View>
               <View style={styles.infoItem}>
                 <Text style={styles.infoLabel}>Mã SP</Text>
@@ -209,6 +267,46 @@ export default function ProductDetailScreen() {
               </View>
             </View>
           </View>
+
+          {/* Product Composition */}
+          {product.compositions && product.compositions.length > 0 && (
+            <View style={styles.compositionCard}>
+              <Text style={styles.compositionTitle}>Thành phần sản phẩm</Text>
+              {product.compositions.map((item, index) => {
+                const itemImages = item.childImage
+                  ? JSON.parse(item.childImage)
+                  : [];
+                return (
+                  <View key={index} style={styles.compositionItem}>
+                    {itemImages[0] && (
+                      <Image
+                        source={{ uri: itemImages[0] }}
+                        style={styles.compositionImage}
+                      />
+                    )}
+                    <View style={styles.compositionInfo}>
+                      <Text style={styles.compositionName}>
+                        {item.childName}
+                      </Text>
+                      <View style={styles.compositionDetails}>
+                        <Text style={styles.compositionType}>
+                          {item.childType === "FLOWER" ? "Hoa" : "Phụ kiện"}
+                        </Text>
+                        <Text style={styles.compositionDivider}>•</Text>
+                        <Text style={styles.compositionQuantity}>
+                          SL: {item.quantity}
+                        </Text>
+                        <Text style={styles.compositionDivider}>•</Text>
+                        <Text style={styles.compositionPrice}>
+                          {formatVND(item.childPrice)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
 
           <View style={styles.ctaButtons}>
             <TouchableOpacity style={styles.primaryButton}>
@@ -274,9 +372,8 @@ export default function ProductDetailScreen() {
               {activeTab === "desc" && (
                 <View>
                   <Text style={styles.tabContentText}>
-                    {product.name} là sự lựa chọn hoàn hảo cho những dịp đặc
-                    biệt. Hoa được tuyển chọn kỹ lưỡng, đảm bảo độ tươi và chất
-                    lượng cao nhất.
+                    {product.description ||
+                      `${product.name} là sự lựa chọn hoàn hảo cho những dịp đặc biệt. Hoa được tuyển chọn kỹ lưỡng, đảm bảo độ tươi và chất lượng cao nhất.`}
                   </Text>
                   <View style={styles.bulletList}>
                     <View style={styles.bulletItem}>
@@ -400,12 +497,15 @@ export default function ProductDetailScreen() {
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.cartButton}>
+        <TouchableOpacity style={styles.cartButton} onPress={handleAddToCart}>
           <Ionicons name="cart-outline" size={24} color="#047857" />
           <Text style={styles.cartButtonText}>Giỏ hàng</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.buyNowButton}>
-          <Text style={styles.buyNowButtonText}>Mua ngay</Text>
+        <TouchableOpacity
+          style={[styles.buyNowButton]}
+          onPress={handleCheckout}
+        >
+          <Text style={styles.buyNowButtonText}>Thanh toán</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -484,24 +584,10 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  discountBadgeDetail: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    backgroundColor: "#EF4444",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  discountBadgeText: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
   freshBadge: {
     position: "absolute",
     top: 12,
-    left: 80,
+    left: 12,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#D1FAE5",
@@ -577,6 +663,26 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#374151",
   },
+  stockBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#D1FAE5",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 4,
+  },
+  stockBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#047857",
+  },
+  outOfStock: {
+    backgroundColor: "#FEE2E2",
+  },
+  outOfStockText: {
+    color: "#DC2626",
+  },
   priceCard: {
     backgroundColor: "#FFF",
     padding: 16,
@@ -585,30 +691,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  originalPriceDetail: {
-    fontSize: 14,
-    color: "#9CA3AF",
-    textDecorationLine: "line-through",
-    marginBottom: 4,
-  },
   currentPrice: {
     fontSize: 28,
     fontWeight: "bold",
     color: "#059669",
     marginBottom: 8,
-  },
-  savingBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#D1FAE5",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 12,
-  },
-  savingText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#047857",
   },
   priceNote: {
     fontSize: 12,
@@ -639,6 +726,64 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#374151",
+  },
+  compositionCard: {
+    backgroundColor: "#FFF",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  compositionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1F2937",
+    marginBottom: 12,
+  },
+  compositionItem: {
+    flexDirection: "row",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  compositionImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  compositionInfo: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  compositionName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 4,
+  },
+  compositionDetails: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  compositionType: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  compositionDivider: {
+    fontSize: 12,
+    color: "#D1D5DB",
+  },
+  compositionQuantity: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  compositionPrice: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#059669",
   },
   ctaButtons: {
     flexDirection: "row",
@@ -859,6 +1004,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+  },
+  buyNowButtonDisabled: {
+    backgroundColor: "#9CA3AF",
   },
   buyNowButtonText: {
     color: "#FFF",
