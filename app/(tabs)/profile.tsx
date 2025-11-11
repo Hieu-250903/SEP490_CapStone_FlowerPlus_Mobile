@@ -2,13 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { authService, userProfileApi } from "../../services/auth";
@@ -145,7 +145,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.statsContainer}>
+        {/* <View style={styles.statsContainer}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>12</Text>
             <Text style={styles.statLabel}>Đơn hàng</Text>
@@ -160,7 +160,7 @@ export default function ProfileScreen() {
             <Text style={styles.statValue}>3</Text>
             <Text style={styles.statLabel}>Đánh giá</Text>
           </View>
-        </View>
+        </View> */}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Đơn hàng của tôi</Text>
@@ -169,24 +169,41 @@ export default function ProfileScreen() {
               icon="receipt-outline"
               title="Đơn hàng"
               subtitle="Xem lịch sử đơn hàng"
-              onPress={() => {}}
+              onPress={() => {
+                router.push("/orders/all-orders");
+              }}
             />
             <MenuItem
               icon="time-outline"
               title="Đang xử lý"
               subtitle="2 đơn hàng"
-              badge="2"
-              onPress={() => {}}
+              onPress={() => {
+                router.push("/orders/process-orders");
+              }}
             />
             <MenuItem
               icon="checkmark-circle-outline"
               title="Đã giao"
               subtitle="10 đơn hàng"
-              onPress={() => {}}
+              onPress={() => {
+                router.push("/orders/delivered-orders");
+              }}
             />
           </View>
         </View>
-
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Lịch sử giao dịch</Text>
+          <View style={styles.menuSection}>
+            <MenuItem
+              icon="card-outline"
+              title="Thanh toán"
+              subtitle="Xem lịch sử thanh toán"
+              onPress={() => {
+                router.push("/(screen)/transactions-history");
+              }}
+            />
+          </View>
+        </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tài khoản</Text>
           <View style={styles.menuSection}>

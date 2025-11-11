@@ -24,13 +24,9 @@ export const webhookPayos = async (webhookData: string) => {
   }
 };
 
-export const getOrders = async (params?: {
-  status?: string;
-  pageNumber?: number;
-  pageSize?: number;
-}) => {
+export const getOrders = async () => {
   try {
-    const response = await instance.get("/orders", { params });
+    const response = await instance.get("/orders/get-list-orders-by-user");
     return response;
   } catch (error) {
     console.error("Error getting orders:", error);
@@ -57,7 +53,15 @@ export const cancelOrder = async (orderId: number) => {
     throw error;
   }
 };
-
+export const getListTransactionsByUser = async () => {
+  try {
+    const response = await instance.get("/transactions/get-list-transactions");
+    return response;
+  } catch (error) {
+    console.error("Error getting transactions:", error);
+    throw error;
+  }
+};
 export default {
   checkoutOrder,
   webhookPayos,
