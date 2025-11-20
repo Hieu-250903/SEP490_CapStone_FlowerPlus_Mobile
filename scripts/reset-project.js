@@ -50,7 +50,6 @@ const moveDirectories = async (userInput) => {
     if (userInput === "y") {
       // Create the app-example directory
       await fs.promises.mkdir(exampleDirPath, { recursive: true });
-      console.log(`📁 /${exampleDir} directory created.`);
     }
 
     // Move old directories to new app-example directory or delete them
@@ -60,13 +59,10 @@ const moveDirectories = async (userInput) => {
         if (userInput === "y") {
           const newDirPath = path.join(root, exampleDir, dir);
           await fs.promises.rename(oldDirPath, newDirPath);
-          console.log(`➡️ /${dir} moved to /${exampleDir}/${dir}.`);
         } else {
           await fs.promises.rm(oldDirPath, { recursive: true, force: true });
-          console.log(`❌ /${dir} deleted.`);
         }
       } else {
-        console.log(`➡️ /${dir} does not exist, skipping.`);
       }
     }
 
@@ -94,7 +90,7 @@ const moveDirectories = async (userInput) => {
       }`
     );
   } catch (error) {
-    console.error(`❌ Error during script execution: ${error.message}`);
+    console.log(`❌ Error during script execution: ${error.message}`);
   }
 };
 

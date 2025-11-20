@@ -39,7 +39,6 @@ export const authService = {
       const decoded = jwtDecode<UserData>(token);
       return decoded;
     } catch (error) {
-      console.log("Error decoding token:", error);
       return null;
     }
   },
@@ -55,16 +54,8 @@ export const authService = {
       await AsyncStorage.setItem(TOKEN_KEY, token);
 
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(userData));
-
-      console.log("Auth saved successfully:", {
-        userId: userData.id,
-        email: userData.email,
-        role: userData.role,
-      });
-
       return true;
     } catch (error) {
-      console.log("Error saving auth:", error);
       return false;
     }
   },
@@ -73,7 +64,6 @@ export const authService = {
     try {
       return await AsyncStorage.getItem(TOKEN_KEY);
     } catch (error) {
-      console.log("Error getting token:", error);
       return null;
     }
   },
@@ -83,7 +73,6 @@ export const authService = {
       const userData = await AsyncStorage.getItem(USER_KEY);
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
-      console.log("Error getting user:", error);
       return null;
     }
   },
@@ -93,7 +82,6 @@ export const authService = {
       const user = await authService.getUser();
       return user?.id || null;
     } catch (error) {
-      console.log("Error getting user ID:", error);
       return null;
     }
   },
@@ -110,13 +98,11 @@ export const authService = {
       const isValid = userData.exp > currentTime;
 
       if (!isValid) {
-        console.log("Token expired, clearing auth");
         await authService.clearAuth();
       }
 
       return isValid;
     } catch (error) {
-      console.log("Error checking token validity:", error);
       return false;
     }
   },
@@ -128,7 +114,6 @@ export const authService = {
 
       return await authService.isTokenValid();
     } catch (error) {
-      console.log("Error checking authentication:", error);
       return false;
     }
   },
@@ -136,9 +121,7 @@ export const authService = {
   clearAuth: async (): Promise<void> => {
     try {
       await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
-      console.log("Auth cleared successfully");
     } catch (error) {
-      console.log("Error clearing auth:", error);
     }
   },
 

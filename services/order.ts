@@ -1,15 +1,35 @@
 import instance from "@/config/instance";
 
-export const checkoutOrder = async () => {
+interface CheckoutPayload {
+  cancelUrl: string;
+  returnUrl: string;
+  note: string;
+  phoneNumber: string;
+  recipientName: string;
+  requestDeliveryTime?: string;
+  shippingAddress: string;
+  userId: number;
+  productId?: number;
+}
+
+export const checkoutOrder = async (data: CheckoutPayload) => {
   try {
-    const response = await instance.post("/orders/checkout");
-    return response;
+    const response = await instance.post("/orders/checkout", data);
+    return response.data;
   } catch (error) {
     console.error("Error checkout order:", error);
     throw error;
   }
 };
-
+export const checkoutProduct = async (data: CheckoutPayload) => {
+  try {
+    const response = await instance.post("/orders/checkout-product", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error checkout order:", error);
+    throw error;
+  }
+};
 export const webhookPayos = async (webhookData: string) => {
   try {
     const response = await instance.post("/orders/webhook-payos", webhookData, {

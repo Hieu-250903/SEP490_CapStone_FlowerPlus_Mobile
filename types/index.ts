@@ -100,3 +100,16 @@ export interface WebhookPayosRequest {
   virtualAccountName?: string;
   virtualAccountNumber?: string;
 }
+export interface addressDelivery {
+  address: string;
+  createdAt: Date;
+  default: boolean;
+  district: string;
+  id: number;
+  phoneNumber: number;
+  province: string;
+  recipientName: string;
+  updatedAt: Date;
+  userId: number;
+  ward: string;
+}

@@ -22,6 +22,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin");
@@ -34,7 +35,6 @@ export default function LoginScreen() {
         email: email.trim(),
         password: password,
       });
-      console.log(res);
       if (res.success && res.data) {
         await authService.saveAuth(res.data.accessToken);
 
