@@ -27,8 +27,6 @@ instance.interceptors.response.use(
     const status = error?.response?.status;
 
     if (status === 401 || status === 403) {
-      console.log("Token invalid or expired, redirecting to login...");
-
       await AsyncStorage.multiRemove(["auth_token", "user_data"]);
 
       router.replace("/(auth)/login");

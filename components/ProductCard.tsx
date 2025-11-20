@@ -21,7 +21,6 @@ interface ProductCardProps {
 export default function ProductCard({ product, onPress }: ProductCardProps) {
   const router = useRouter();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  console.log("ProductCard render:", product);
 
   // Parse images from JSON string and get the first image
   const getProductImage = () => {
@@ -32,7 +31,6 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
       }
       return product.image || "https://via.placeholder.com/400";
     } catch (error) {
-      console.log("Error parsing images:", error);
       return product.image || "https://via.placeholder.com/400";
     }
   };
@@ -72,7 +70,6 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
         ]);
       }
     } catch (error: any) {
-      console.log("Error adding to cart:", error);
       Alert.alert(
         "Lỗi",
         error?.message || "Không thể thêm vào giỏ hàng. Vui lòng thử lại.",
