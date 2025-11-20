@@ -42,7 +42,6 @@ export default function ProductDetailScreen() {
         setIsLoading(true);
         const response = await getProductDetail(Number(id));
         if (response.data) {
-          console.log("Product details:", response.data);
           setProduct(response.data);
         }
       } catch (error) {
@@ -66,7 +65,6 @@ export default function ProductDetailScreen() {
         ]);
       }
     } catch (error: any) {
-      console.log("Error adding to cart:", error);
       Alert.alert(
         "Lỗi",
         error?.message || "Không thể thêm vào giỏ hàng. Vui lòng thử lại.",

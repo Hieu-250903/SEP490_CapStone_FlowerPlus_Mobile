@@ -43,6 +43,13 @@ export default function RootLayout() {
           headerShown: false,
         }}
       />
+       <Stack.Screen
+        name="(screen)/custom-flowers"
+        options={{
+          title: "Lịch sử thanh toán",
+          headerShown: false,
+        }}
+      />
       <Stack.Screen
         name="orders/all-orders"
         options={{

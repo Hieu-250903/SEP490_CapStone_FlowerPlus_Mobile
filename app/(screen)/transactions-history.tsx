@@ -3,15 +3,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -73,10 +73,7 @@ const TransactionsHistory = () => {
       }
 
       const response = await getListTransactionsByUser();
-      console.log("Transaction history data:", response.data);
-
       if (response?.data) {
-        // Sort by orderCode (timestamp) descending
         const sortedTransactions = [...response.data].sort(
           (a, b) => parseInt(b.orderCode) - parseInt(a.orderCode)
         );
@@ -192,9 +189,6 @@ const TransactionsHistory = () => {
 
   const handleWebViewNavigationStateChange = (navState: any) => {
     const { url } = navState;
-    console.log("WebView URL:", url);
-
-    // Check for success URL patterns
     if (
       url.includes("/success") ||
       url.includes("success=true") ||

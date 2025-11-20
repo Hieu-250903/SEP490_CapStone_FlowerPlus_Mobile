@@ -22,23 +22,19 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Utility function to parse product images
 const getProductImage = (imageData: string | null | undefined): string => {
   try {
     if (!imageData) {
       return "https://via.placeholder.com/400";
     }
 
-    // Check if it's a JSON string array
     if (imageData.startsWith("[")) {
       const imageArray = JSON.parse(imageData);
       return imageArray[0] || "https://via.placeholder.com/400";
     }
 
-    // Direct URL
     return imageData;
   } catch (error) {
-    console.log("Error parsing image:", error);
     return "https://via.placeholder.com/400";
   }
 };
@@ -92,7 +88,6 @@ export default function CartScreen() {
       const response = await getCart();
       if (response?.data) {
         const items = response.data.items || [];
-        console.log("Fetched cart items:", items);
         setCartItems(items);
         setTotalPrice(response.data.totalPrice || 0);
 

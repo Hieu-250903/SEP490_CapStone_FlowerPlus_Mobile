@@ -89,7 +89,6 @@ const AllOrder = () => {
       }
 
       const response = await getOrders();
-      console.log("Orders fetched:", response.data);
 
       if (response?.data) {
         setOrders(response.data);

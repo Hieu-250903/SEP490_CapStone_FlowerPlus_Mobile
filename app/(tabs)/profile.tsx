@@ -27,7 +27,6 @@ export default function ProfileScreen() {
         router.replace("/(auth)/login");
       }
     } catch (error) {
-      console.log("Error fetching user data:", error);
     }
   };
 
@@ -37,7 +36,6 @@ export default function ProfileScreen() {
         setIsLoading(true);
         const isLoggedIn = await authService.isAuthenticated();
         const token = await authService.getToken();
-        console.log("isLoggedIn:", isLoggedIn, "token:", token);
         if (!isLoggedIn || !token) {
           router.replace("/(auth)/login");
         } else {
@@ -145,23 +143,19 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>12</Text>
-            <Text style={styles.statLabel}>Đơn hàng</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Cá nhân hóa</Text>
+          <View style={styles.menuSection}>
+            <MenuItem
+              icon="flower"
+              title="Hoa custom"
+              subtitle="Hoa custom"
+              onPress={() => {
+                router.push("/(screen)/custom-flowers");
+              }}
+            />
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>5</Text>
-            <Text style={styles.statLabel}>Yêu thích</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>3</Text>
-            <Text style={styles.statLabel}>Đánh giá</Text>
-          </View>
-        </View> */}
-
+        </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Đơn hàng của tôi</Text>
           <View style={styles.menuSection}>
