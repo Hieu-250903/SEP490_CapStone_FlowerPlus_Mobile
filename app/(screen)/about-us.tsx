@@ -1,15 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import React from "react";
-import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Linking,
-} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking } from "react-native";
 
 export default function AboutUs() {
   const router = useRouter();
