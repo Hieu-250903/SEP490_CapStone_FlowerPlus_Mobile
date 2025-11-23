@@ -3,7 +3,9 @@ import { checkoutOrder } from "@/services/order";
 import { addressDelivery } from "@/types";
 import { formatVND } from "@/utils/imageUtils";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -84,6 +86,32 @@ export default function CheckoutScreen() {
         setDeliveryDate(selectedDate);
       }
     }
+  };
+
+  const openAndroidDateTimePicker = () => {
+    const current = deliveryDate || new Date();
+    // First open date picker with minimumDate to prevent past dates
+    DateTimePickerAndroid.open({
+      value: current,
+      onChange: (event: any, pickedDate?: Date) => {
+        if (!pickedDate || event?.type === "dismissed") return;
+        const selectedDateOnly = pickedDate;
+        // Then open time picker
+        DateTimePickerAndroid.open({
+          value: selectedDateOnly,
+          onChange: (timeEvent: any, pickedTime?: Date) => {
+            if (!pickedTime || timeEvent?.type === "dismissed") return;
+            const combined = new Date(selectedDateOnly);
+            combined.setHours(pickedTime.getHours(), pickedTime.getMinutes(), 0, 0);
+            setDeliveryDate(combined);
+          },
+          mode: "time",
+          is24Hour: true,
+        });
+      },
+      mode: "date",
+      minimumDate: new Date(),
+    });
   };
 
   const confirmIOSDate = () => {
@@ -167,11 +195,11 @@ export default function CheckoutScreen() {
     }
   };
 
-  const renderAddressItem = (item: any) => {
+  const renderAddressItem = (item: any, index?: number) => {
     const isSelected = selectedAddress?.id === item.id;
     return (
       <TouchableOpacity
-        key={item.id}
+        key={`${item.id ?? 'addr'}-${index ?? 'single'}`}
         style={[styles.addressCard, isSelected && styles.addressCardSelected]}
         onPress={() => handleSelectAddress(item)}
       >
@@ -256,7 +284,7 @@ export default function CheckoutScreen() {
               )
             ) : (
               <View>
-                {addressList.map((item) => renderAddressItem(item))}
+                {addressList.map((item, idx) => renderAddressItem(item, idx))}
                 <TouchableOpacity
                   style={styles.collapseButton}
                   onPress={() => setIsAddressExpanded(false)}
@@ -301,7 +329,13 @@ export default function CheckoutScreen() {
             </View>
             <TouchableOpacity
               style={styles.dateInputContainer}
-              onPress={() => setShowDatePicker(true)}
+              onPress={() => {
+                if (Platform.OS === "android") {
+                  openAndroidDateTimePicker();
+                } else {
+                  setShowDatePicker(true);
+                }
+              }}
             >
               <Text
                 style={[
@@ -324,8 +358,8 @@ export default function CheckoutScreen() {
         {/* SECTION 3: SẢN PHẨM */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sản phẩm ({items.length})</Text>
-          {items.map((item: any) => (
-            <View key={item.id} style={styles.orderItem}>
+          {items.map((item: any, idx: number) => (
+            <View key={`${item.id ?? 'item'}-${idx}`} style={styles.orderItem}>
               <Text style={styles.itemName} numberOfLines={1}>
                 {item.productName}
               </Text>
@@ -442,8 +476,8 @@ export default function CheckoutScreen() {
       </Modal>
 
       {/* --- DATE PICKER MODAL (ĐÃ FIX UI) --- */}
-      {showDatePicker &&
-        (Platform.OS === "ios" ? (
+      {showDatePicker && (
+        Platform.OS === "ios" ? (
           <Modal
             transparent={true}
             animationType="slide"
@@ -477,15 +511,29 @@ export default function CheckoutScreen() {
             </View>
           </Modal>
         ) : (
-          <DateTimePicker
-            value={deliveryDate || new Date()}
-            mode="datetime"
-            is24Hour={true}
-            display="default"
-            onChange={handleDateChange}
-            minimumDate={new Date()}
-          />
-        ))}
+          // Fallback for web / other platforms where the native picker isn't available
+          <Modal
+            transparent={true}
+            animationType="fade"
+            visible={showDatePicker}
+            onRequestClose={() => setShowDatePicker(false)}
+          >
+            <View style={styles.iosDatePickerOverlay}>
+              <View style={[styles.iosDatePickerContent, { padding: 20 }]}>
+                <Text style={{ color: "#1F2937", marginBottom: 12 }}>
+                  Chức năng chọn thời gian không khả dụng trên nền tảng này.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(false)}
+                  style={{ alignSelf: "flex-end" }}
+                >
+                  <Text style={styles.iosConfirmText}>Đóng</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        )
+      )}
     </SafeAreaView>
   );
 }
