@@ -1,8 +1,23 @@
 import { Stack } from "expo-router";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  StyleSheet,
+  View,
+} from "react-native";
 
 export default function RootLayout() {
   return (
-    <Stack>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      enabled
+    >
+      <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+        <View style={styles.container}>
+          <Stack>
       <Stack.Screen
         name="(tabs)"
         options={{
@@ -71,6 +86,13 @@ export default function RootLayout() {
           headerShown: false,
         }}
       />
-    </Stack>
+          </Stack>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+});
