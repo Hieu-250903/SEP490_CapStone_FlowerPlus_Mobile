@@ -205,19 +205,27 @@ export default function ProfileScreen() {
               icon="heart-outline"
               title="Yêu thích"
               subtitle="5 sản phẩm"
-              onPress={() => {}}
+              onPress={() => { }}
+            />
+            <MenuItem
+              icon="pricetag-outline"
+              title="Mã giảm giá"
+              subtitle="Vouchers của tôi"
+              onPress={() => {
+                router.push("/(screen)/vouchers");
+              }}
             />
             <MenuItem
               icon="location-outline"
               title="Địa chỉ giao hàng"
               subtitle="Quản lý địa chỉ"
-              onPress={() => {}}
+              onPress={() => { }}
             />
             <MenuItem
               icon="card-outline"
               title="Phương thức thanh toán"
               subtitle="Thẻ & Ví điện tử"
-              onPress={() => {}}
+              onPress={() => { }}
             />
           </View>
         </View>
@@ -229,27 +237,25 @@ export default function ProfileScreen() {
               icon="notifications-outline"
               title="Thông báo"
               subtitle="Cài đặt thông báo"
-              onPress={() => {}}
+              onPress={() => { }}
             />
             <MenuItem
               icon="settings-outline"
               title="Cài đặt"
               subtitle="Cài đặt ứng dụng"
-              onPress={() => {}}
+              onPress={() => { }}
             />
             <MenuItem
               icon="help-circle-outline"
               title="Trợ giúp & Hỗ trợ"
               subtitle="Câu hỏi thường gặp"
-              onPress={() => {}}
+              onPress={() => { }}
             />
             <MenuItem
               icon="information-circle-outline"
               title="Về chúng tôi"
               subtitle="FlowerPlus.vn"
-              onPress={() => {
-                router.push("/(screen)/about-us");
-              }}
+              onPress={() => { }}
             />
           </View>
         </View>

@@ -1,23 +1,8 @@
 import { Stack } from "expo-router";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
-  StyleSheet,
-  View,
-} from "react-native";
 
 export default function RootLayout() {
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      enabled
-    >
-      <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-        <View style={styles.container}>
-          <Stack>
+    <Stack>
       <Stack.Screen
         name="(tabs)"
         options={{
@@ -52,21 +37,21 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
-        name="(screen)/about-us"
-        options={{
-          title: "Về chúng tôi",
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
         name="(screen)/transactions-history"
         options={{
           title: "Lịch sử thanh toán",
           headerShown: false,
         }}
       />
-       <Stack.Screen
+      <Stack.Screen
         name="(screen)/custom-flowers"
+        options={{
+          title: "Lịch sử thanh toán",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="(screen)/vouchers"
         options={{
           title: "Lịch sử thanh toán",
           headerShown: false,
@@ -93,13 +78,6 @@ export default function RootLayout() {
           headerShown: false,
         }}
       />
-          </Stack>
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+    </Stack>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-});

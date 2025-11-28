@@ -3,9 +3,9 @@ import { checkoutOrder } from "@/services/order";
 import { addressDelivery } from "@/types";
 import { formatVND } from "@/utils/imageUtils";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker, {
-  DateTimePickerAndroid,
-} from "@react-native-community/datetimepicker";
+import { getVouchers, Voucher, calculateDiscount } from "@/services/voucher";
+import VoucherCard from "@/components/VoucherCard";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -41,8 +41,15 @@ export default function CheckoutScreen() {
   const [deliveryDate, setDeliveryDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Voucher states
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
+  const [showVoucherList, setShowVoucherList] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(0);
+
   const items = params.items ? JSON.parse(params.items as string) : [];
   const total = params.total ? Number(params.total) : 0;
+  const finalTotal = total - discountAmount;
 
   useEffect(() => {
     const fetchAddresses = async () => {
@@ -58,6 +65,17 @@ export default function CheckoutScreen() {
       }
     };
     fetchAddresses();
+
+    // Fetch vouchers
+    const fetchVouchers = async () => {
+      try {
+        const data = await getVouchers();
+        setVouchers(data);
+      } catch (error) {
+        console.error("Error fetching vouchers:", error);
+      }
+    };
+    fetchVouchers();
   }, []);
 
   const handleSelectAddress = (address: any) => {
@@ -71,9 +89,9 @@ export default function CheckoutScreen() {
     )
       .toString()
       .padStart(2, "0")}/${date.getFullYear()} ${date
-      .getHours()
-      .toString()
-      .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+        .getHours()
+        .toString()
+        .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -86,32 +104,6 @@ export default function CheckoutScreen() {
         setDeliveryDate(selectedDate);
       }
     }
-  };
-
-  const openAndroidDateTimePicker = () => {
-    const current = deliveryDate || new Date();
-    // First open date picker with minimumDate to prevent past dates
-    DateTimePickerAndroid.open({
-      value: current,
-      onChange: (event: any, pickedDate?: Date) => {
-        if (!pickedDate || event?.type === "dismissed") return;
-        const selectedDateOnly = pickedDate;
-        // Then open time picker
-        DateTimePickerAndroid.open({
-          value: selectedDateOnly,
-          onChange: (timeEvent: any, pickedTime?: Date) => {
-            if (!pickedTime || timeEvent?.type === "dismissed") return;
-            const combined = new Date(selectedDateOnly);
-            combined.setHours(pickedTime.getHours(), pickedTime.getMinutes(), 0, 0);
-            setDeliveryDate(combined);
-          },
-          mode: "time",
-          is24Hour: true,
-        });
-      },
-      mode: "date",
-      minimumDate: new Date(),
-    });
   };
 
   const confirmIOSDate = () => {
@@ -138,7 +130,8 @@ export default function CheckoutScreen() {
         recipientName: selectedAddress.recipientName,
         shippingAddress: `${selectedAddress.address}, ${selectedAddress.ward}, ${selectedAddress.district}, ${selectedAddress.province}`,
         requestDeliveryTime: deliveryDate ? deliveryDate.toISOString() : null,
-        userId:selectedAddress.userId,
+        userId: selectedAddress.userId,
+        voucherCode: selectedVoucher?.code || null,
       });
 
       if (response) {
@@ -195,11 +188,11 @@ export default function CheckoutScreen() {
     }
   };
 
-  const renderAddressItem = (item: any, index?: number) => {
+  const renderAddressItem = (item: any) => {
     const isSelected = selectedAddress?.id === item.id;
     return (
       <TouchableOpacity
-        key={`${item.id ?? 'addr'}-${index ?? 'single'}`}
+        key={item.id}
         style={[styles.addressCard, isSelected && styles.addressCardSelected]}
         onPress={() => handleSelectAddress(item)}
       >
@@ -234,6 +227,43 @@ export default function CheckoutScreen() {
         )}
       </TouchableOpacity>
     );
+  };
+
+  // Voucher handlers
+  const handleSelectVoucher = (voucher: Voucher) => {
+    setSelectedVoucher(voucher);
+    const discount = calculateDiscount(voucher, total);
+    setDiscountAmount(discount);
+    setShowVoucherList(false);
+  };
+
+  const handleRemoveVoucher = () => {
+    setSelectedVoucher(null);
+    setDiscountAmount(0);
+  };
+
+  const getAvailableVouchers = () => {
+    const now = new Date();
+    const productIds = items.map((item: any) => item.productId);
+
+    return vouchers.filter((voucher) => {
+      const startsAt = new Date(voucher.startsAt);
+      const endsAt = new Date(voucher.endsAt);
+
+      if (now < startsAt || now > endsAt) return false;
+      if (voucher.usageLimit && voucher.usedCount >= voucher.usageLimit)
+        return false;
+      if (voucher.minOrderValue && total < voucher.minOrderValue) return false;
+
+      if (!voucher.applyAllProducts) {
+        const hasApplicableProduct = productIds.some((id) =>
+          voucher.productIds.includes(id)
+        );
+        if (!hasApplicableProduct) return false;
+      }
+
+      return true;
+    });
   };
 
   return (
@@ -284,7 +314,7 @@ export default function CheckoutScreen() {
               )
             ) : (
               <View>
-                {addressList.map((item, idx) => renderAddressItem(item, idx))}
+                {addressList.map((item) => renderAddressItem(item))}
                 <TouchableOpacity
                   style={styles.collapseButton}
                   onPress={() => setIsAddressExpanded(false)}
@@ -329,13 +359,7 @@ export default function CheckoutScreen() {
             </View>
             <TouchableOpacity
               style={styles.dateInputContainer}
-              onPress={() => {
-                if (Platform.OS === "android") {
-                  openAndroidDateTimePicker();
-                } else {
-                  setShowDatePicker(true);
-                }
-              }}
+              onPress={() => setShowDatePicker(true)}
             >
               <Text
                 style={[
@@ -355,11 +379,54 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
-        {/* SECTION 3: SẢN PHẨM */}
+        {/* SECTION 3: VOUCHER */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Mã giảm giá</Text>
+            {!selectedVoucher && (
+              <TouchableOpacity
+                style={styles.btnAddAddress}
+                onPress={() => setShowVoucherList(true)}
+              >
+                <Text style={styles.btnAddAddressText}>Chọn voucher</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {selectedVoucher ? (
+            <View>
+              <VoucherCard
+                voucher={selectedVoucher}
+                isSelected={true}
+                showConditions={false}
+              />
+              <TouchableOpacity
+                style={styles.removeVoucherButton}
+                onPress={handleRemoveVoucher}
+              >
+                <Ionicons name="close-circle" size={20} color="#EF4444" />
+                <Text style={styles.removeVoucherText}>Xóa voucher</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.selectVoucherPlaceholder}
+              onPress={() => setShowVoucherList(true)}
+            >
+              <Ionicons name="pricetag-outline" size={24} color="#BE123C" />
+              <Text style={styles.selectVoucherText}>
+                Chọn hoặc nhập mã giảm giá
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* SECTION 4: SẢN PHẨM */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sản phẩm ({items.length})</Text>
-          {items.map((item: any, idx: number) => (
-            <View key={`${item.id ?? 'item'}-${idx}`} style={styles.orderItem}>
+          {items.map((item: any) => (
+            <View key={item.id} style={styles.orderItem}>
               <Text style={styles.itemName} numberOfLines={1}>
                 {item.productName}
               </Text>
@@ -383,10 +450,18 @@ export default function CheckoutScreen() {
             <Text style={styles.totalLabel}>Phí vận chuyển:</Text>
             <Text style={styles.totalValue}>Miễn phí</Text>
           </View>
+          {discountAmount > 0 && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Giảm giá:</Text>
+              <Text style={[styles.totalValue, { color: "#10B981" }]}>
+                -{formatVND(discountAmount)}
+              </Text>
+            </View>
+          )}
           <View style={styles.divider} />
           <View style={styles.totalRow}>
             <Text style={styles.totalLabelMain}>Tổng cộng:</Text>
-            <Text style={styles.totalValueMain}>{formatVND(total)}</Text>
+            <Text style={styles.totalValueMain}>{formatVND(finalTotal)}</Text>
           </View>
         </View>
 
@@ -413,7 +488,7 @@ export default function CheckoutScreen() {
       <View style={styles.footer}>
         <View style={styles.footerInfo}>
           <Text style={styles.footerLabel}>Tổng thanh toán:</Text>
-          <Text style={styles.footerTotal}>{formatVND(total)}</Text>
+          <Text style={styles.footerTotal}>{formatVND(finalTotal)}</Text>
         </View>
         <TouchableOpacity
           style={[
@@ -433,6 +508,47 @@ export default function CheckoutScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Voucher Selection Modal */}
+      <Modal
+        visible={showVoucherList}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowVoucherList(false)}
+      >
+        <SafeAreaView style={styles.modalContainer} edges={["top"]}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={() => setShowVoucherList(false)}
+              style={styles.modalCloseButton}
+            >
+              <Ionicons name="close" size={24} color="#1F2937" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Chọn Voucher</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+            {getAvailableVouchers().length > 0 ? (
+              getAvailableVouchers().map((voucher) => (
+                <VoucherCard
+                  key={voucher.id}
+                  voucher={voucher}
+                  onPress={() => handleSelectVoucher(voucher)}
+                  isSelected={selectedVoucher?.id === voucher.id}
+                  showConditions={true}
+                />
+              ))
+            ) : (
+              <View style={styles.emptyVoucherContainer}>
+                <Ionicons name="pricetag-outline" size={64} color="#D1D5DB" />
+                <Text style={styles.emptyVoucherText}>
+                  Không có voucher khả dụng
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       {/* MODAL WEBVIEW */}
       <Modal
@@ -476,8 +592,8 @@ export default function CheckoutScreen() {
       </Modal>
 
       {/* --- DATE PICKER MODAL (ĐÃ FIX UI) --- */}
-      {showDatePicker && (
-        Platform.OS === "ios" ? (
+      {showDatePicker &&
+        (Platform.OS === "ios" ? (
           <Modal
             transparent={true}
             animationType="slide"
@@ -511,29 +627,15 @@ export default function CheckoutScreen() {
             </View>
           </Modal>
         ) : (
-          // Fallback for web / other platforms where the native picker isn't available
-          <Modal
-            transparent={true}
-            animationType="fade"
-            visible={showDatePicker}
-            onRequestClose={() => setShowDatePicker(false)}
-          >
-            <View style={styles.iosDatePickerOverlay}>
-              <View style={[styles.iosDatePickerContent, { padding: 20 }]}>
-                <Text style={{ color: "#1F2937", marginBottom: 12 }}>
-                  Chức năng chọn thời gian không khả dụng trên nền tảng này.
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setShowDatePicker(false)}
-                  style={{ alignSelf: "flex-end" }}
-                >
-                  <Text style={styles.iosConfirmText}>Đóng</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-        )
-      )}
+          <DateTimePicker
+            value={deliveryDate || new Date()}
+            mode="datetime"
+            is24Hour={true}
+            display="default"
+            onChange={handleDateChange}
+            minimumDate={new Date()}
+          />
+        ))}
     </SafeAreaView>
   );
 }
@@ -654,6 +756,51 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 14,
     color: "#4B5563",
+  },
+
+  // Voucher Styles
+  removeVoucherButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "#FEE2E2",
+    gap: 6,
+  },
+  removeVoucherText: {
+    fontSize: 14,
+    color: "#EF4444",
+    fontWeight: "600",
+  },
+  selectVoucherPlaceholder: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderStyle: "dashed",
+    backgroundColor: "#F9FAFB",
+  },
+  selectVoucherText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 14,
+    color: "#4B5563",
+  },
+  emptyVoucherContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 80,
+    gap: 16,
+  },
+  emptyVoucherText: {
+    fontSize: 16,
+    color: "#9CA3AF",
   },
 
   // Form Styles
