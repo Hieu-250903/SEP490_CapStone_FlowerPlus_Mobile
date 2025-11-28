@@ -58,6 +58,13 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
+        name="(screen)/about-us"
+        options={{
+          title: "Về chúng tôi",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="orders/all-orders"
         options={{
           title: "Tất cả đơn hàng",
