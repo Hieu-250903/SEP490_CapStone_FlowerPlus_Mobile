@@ -82,10 +82,36 @@ export const getListTransactionsByUser = async () => {
     throw error;
   }
 };
+
+export const getListOrdersByShipper = async () => {
+  try {
+    const response = await instance.get("/orders/get-list-orders");
+    return response;
+  } catch (error) {
+    console.error("Error getting orders:", error);
+    throw error;
+  }
+};
+export const updateOrderStatus = async (orderId: number, formData: {
+  step: string,
+  note: string,
+  location: string,
+  imageUrl: string
+}) => {
+  try {
+    const response = await instance.post(`/orders/${orderId}/delivery-status/set`, formData);
+    return response;
+  } catch (error) {
+    console.error("Error updating order status:", error);
+    throw error;
+  }
+};
 export default {
   checkoutOrder,
   webhookPayos,
   getOrders,
   getOrderDetail,
   cancelOrder,
+  getListOrdersByShipper,
+  updateOrderStatus,
 };

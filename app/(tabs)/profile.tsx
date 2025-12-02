@@ -255,9 +255,7 @@ export default function ProfileScreen() {
               icon="information-circle-outline"
               title="Về chúng tôi"
               subtitle="FlowerPlus.vn"
-             onPress={() => {
-                router.push("/(screen)/about-us");
-              }}
+              onPress={() => { }}
             />
           </View>
         </View>

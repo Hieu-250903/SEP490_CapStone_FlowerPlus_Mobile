@@ -37,13 +37,24 @@ export default function LoginScreen() {
       });
       if (res.success && res.data) {
         await authService.saveAuth(res.data.accessToken);
-
-        Alert.alert("Thành công", res.message || "Đăng nhập thành công", [
-          {
-            text: "OK",
-            onPress: () => router.replace("/(tabs)"),
-          },
-        ]);
+        const decodeData = await authService.decodeToken(
+          res.data.accessToken
+        );
+        if (decodeData.role === "DELIVERY_PERSON") {
+          Alert.alert("Thành công", res.message || "Đăng nhập thành công", [
+            {
+              text: "OK",
+              onPress: () => router.replace("/(screen)/shipper"),
+            },
+          ]);
+        } else {
+          Alert.alert("Thành công", res.message || "Đăng nhập thành công", [
+            {
+              text: "OK",
+              onPress: () => router.replace("/(tabs)/home"),
+            },
+          ]);
+        }
       } else {
         Alert.alert("Lỗi", res.message || "Đăng nhập thất bại");
       }
