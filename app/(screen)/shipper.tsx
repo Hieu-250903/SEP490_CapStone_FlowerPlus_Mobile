@@ -1,5 +1,6 @@
 import UploadImageRN from "@/components/UploadImageRN";
 import { getListOrdersByShipper, updateOrderStatus } from "@/services/order";
+import { authService } from "@/services/auth";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -64,8 +65,6 @@ interface Order {
     deliveryStatuses: DeliveryStatus[];
 }
 
-type FilterStatus = "ALL" | "PENDING_CONFIRMATION" | "PREPARING" | "DELIVERING" | "DELIVERED" | "DELIVERY_FAILED";
-
 const STATUS_COLORS: Record<
     string,
     { bg: string; text: string; icon: string }
@@ -88,10 +87,8 @@ const STATUS_LABELS: Record<string, string> = {
 const ShipperScreen = () => {
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]);
-    const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [selectedStatus, setSelectedStatus] = useState<FilterStatus>("ALL");
 
     // Update status modal states
     const [updateModalVisible, setUpdateModalVisible] = useState(false);
@@ -107,10 +104,6 @@ const ShipperScreen = () => {
     useEffect(() => {
         fetchOrders();
     }, []);
-
-    useEffect(() => {
-        filterOrders();
-    }, [selectedStatus, orders]);
 
     const fetchOrders = async (isRefresh = false) => {
         try {
@@ -139,22 +132,26 @@ const ShipperScreen = () => {
         }
     };
 
-    const filterOrders = () => {
-        if (selectedStatus === "ALL") {
-            setFilteredOrders(orders);
-        } else {
-            setFilteredOrders(
-                orders.filter((order) => {
-                    const latestStatus = order.deliveryStatuses?.[0]?.step || "";
-                    return latestStatus === selectedStatus;
-                })
-            );
-        }
-    };
-
     const onRefresh = useCallback(() => {
         fetchOrders(true);
     }, []);
+
+    const handleLogout = () => {
+        Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
+            {
+                text: "Hủy",
+                style: "cancel",
+            },
+            {
+                text: "Đăng xuất",
+                style: "destructive",
+                onPress: async () => {
+                    await authService.clearAuth();
+                    router.replace("/(auth)/login");
+                },
+            },
+        ]);
+    };
 
     const formatVND = (price: number) => {
         return new Intl.NumberFormat("vi-VN", {
@@ -251,99 +248,13 @@ const ShipperScreen = () => {
             await updateOrderStatus(selectedOrder.id, updateFormData);
             Alert.alert("Thành công", "Đã cập nhật trạng thái đơn hàng");
             handleCloseUpdateModal();
-            fetchOrders(true); // Refresh orders
+            fetchOrders(true);
         } catch (error) {
             console.error("Error updating order status:", error);
             Alert.alert("Lỗi", "Không thể cập nhật trạng thái đơn hàng");
         } finally {
             setSubmitting(false);
         }
-    };
-
-    const renderFilterTabs = () => {
-        const statuses: {
-            key: FilterStatus;
-            label: string;
-            count?: number;
-        }[] = [
-                { key: "ALL", label: "Tất cả", count: orders.length },
-                {
-                    key: "PENDING_CONFIRMATION",
-                    label: "Chờ xác nhận",
-                    count: orders.filter(
-                        (o) => getLatestStatus(o.deliveryStatuses) === "PENDING_CONFIRMATION"
-                    ).length,
-                },
-                {
-                    key: "PREPARING",
-                    label: "Đang chuẩn bị",
-                    count: orders.filter(
-                        (o) => getLatestStatus(o.deliveryStatuses) === "PREPARING"
-                    ).length,
-                },
-                {
-                    key: "DELIVERING",
-                    label: "Đang giao",
-                    count: orders.filter(
-                        (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERING"
-                    ).length,
-                },
-                {
-                    key: "DELIVERED",
-                    label: "Hoàn thành",
-                    count: orders.filter(
-                        (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERED"
-                    ).length,
-                },
-            ];
-
-        return (
-            <View style={styles.filterContainer}>
-                <FlatList
-                    horizontal
-                    data={statuses}
-                    keyExtractor={(item) => item.key}
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.filterList}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity
-                            style={[
-                                styles.filterButton,
-                                selectedStatus === item.key && styles.filterButtonActive,
-                            ]}
-                            onPress={() => setSelectedStatus(item.key)}
-                        >
-                            <Text
-                                style={[
-                                    styles.filterButtonText,
-                                    selectedStatus === item.key && styles.filterButtonTextActive,
-                                ]}
-                            >
-                                {item.label}
-                            </Text>
-                            {item.count !== undefined && item.count > 0 && (
-                                <View
-                                    style={[
-                                        styles.filterBadge,
-                                        selectedStatus === item.key && styles.filterBadgeActive,
-                                    ]}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.filterBadgeText,
-                                            selectedStatus === item.key &&
-                                            styles.filterBadgeTextActive,
-                                        ]}
-                                    >
-                                        {item.count}
-                                    </Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    )}
-                />
-            </View>
-        );
     };
 
     const renderOrderCard = ({ item: order }: { item: Order }) => {
@@ -444,7 +355,7 @@ const ShipperScreen = () => {
                             Sản phẩm ({order.items?.length || 0})
                         </Text>
                     </View>
-                    {order.items?.slice(0, 2).map((item, index) => (
+                    {order.items?.slice(0, 2).map((item) => (
                         <View key={item.id} style={styles.itemRow}>
                             {item.productImage &&
                                 (item.productImage.startsWith('http://') ||
@@ -509,21 +420,15 @@ const ShipperScreen = () => {
             <View style={styles.emptyIconContainer}>
                 <Ionicons name="bicycle-outline" size={64} color="#D1D5DB" />
             </View>
-            <Text style={styles.emptyTitle}>
-                {selectedStatus === "ALL"
-                    ? "Chưa có đơn hàng nào"
-                    : `Không có đơn ${getStatusLabel(selectedStatus).toLowerCase()}`}
-            </Text>
+            <Text style={styles.emptyTitle}>Chưa có đơn hàng nào</Text>
             <Text style={styles.emptyText}>
-                {selectedStatus === "ALL"
-                    ? "Danh sách đơn hàng sẽ hiển thị tại đây"
-                    : "Thử chọn trạng thái khác để xem đơn hàng"}
+                Danh sách đơn hàng sẽ hiển thị tại đây
             </Text>
         </View>
     );
 
     const renderStats = () => {
-        const totalRevenue = filteredOrders.reduce(
+        const totalRevenue = orders.reduce(
             (sum, order) => sum + order.total,
             0
         );
@@ -533,36 +438,38 @@ const ShipperScreen = () => {
         const deliveredCount = orders.filter(
             (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERED"
         ).length;
+        const pendingCount = orders.filter(
+            (o) => getLatestStatus(o.deliveryStatuses) === "PENDING_CONFIRMATION"
+        ).length;
 
         return (
             <View style={styles.statsContainer}>
-                <View style={[styles.statCard, styles.statCardLarge]}>
-                    <View style={styles.statCardHeader}>
+                <View style={styles.statCard}>
+                    <View style={styles.statCardTop}>
                         <Ionicons name="wallet-outline" size={28} color="#047857" />
-                        <View style={styles.statBadge}>
-                            <Text style={styles.statBadgeText}>
-                                {selectedStatus === "ALL"
-                                    ? "Tổng"
-                                    : getStatusLabel(selectedStatus)}
-                            </Text>
-                        </View>
+                        <Text style={styles.statBadgeText}>Doanh thu</Text>
                     </View>
                     <Text style={styles.statAmount}>{formatVND(totalRevenue)}</Text>
                     <Text style={styles.statLabel}>
-                        {filteredOrders.length} đơn hàng
+                        {orders.length} đơn hàng
                     </Text>
                 </View>
 
-                <View style={styles.statColumn}>
-                    <View style={styles.statCardSmall}>
-                        <Ionicons name="bicycle-outline" size={20} color="#6366F1" />
-                        <Text style={styles.statNumberSmall}>{deliveringCount}</Text>
-                        <Text style={styles.statLabelSmall}>Đang giao</Text>
+                <View style={styles.statsGrid}>
+                    <View style={styles.statBox}>
+                        <Ionicons name="time-outline" size={22} color="#F59E0B" />
+                        <Text style={styles.statNumber}>{pendingCount}</Text>
+                        <Text style={styles.statSmallLabel}>Chờ xác nhận</Text>
                     </View>
-                    <View style={styles.statCardSmall}>
-                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                        <Text style={styles.statNumberSmall}>{deliveredCount}</Text>
-                        <Text style={styles.statLabelSmall}>Hoàn thành</Text>
+                    <View style={styles.statBox}>
+                        <Ionicons name="bicycle-outline" size={22} color="#6366F1" />
+                        <Text style={styles.statNumber}>{deliveringCount}</Text>
+                        <Text style={styles.statSmallLabel}>Đang giao</Text>
+                    </View>
+                    <View style={styles.statBox}>
+                        <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+                        <Text style={styles.statNumber}>{deliveredCount}</Text>
+                        <Text style={styles.statSmallLabel}>Hoàn thành</Text>
                     </View>
                 </View>
             </View>
@@ -573,14 +480,13 @@ const ShipperScreen = () => {
         return (
             <SafeAreaView style={styles.container} edges={["top"]}>
                 <View style={styles.header}>
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => router.back()}
-                    >
-                        <Ionicons name="arrow-back" size={24} color="#1F2937" />
-                    </TouchableOpacity>
                     <Text style={styles.headerTitle}>Quản lý giao hàng</Text>
-                    <View style={styles.backButton} />
+                    <TouchableOpacity
+                        style={styles.logoutButton}
+                        onPress={handleLogout}
+                    >
+                        <Ionicons name="log-out-outline" size={22} color="#EF4444" />
+                    </TouchableOpacity>
                 </View>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#047857" />
@@ -593,33 +499,36 @@ const ShipperScreen = () => {
     return (
         <SafeAreaView style={styles.container} edges={["top"]}>
             <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => router.back()}
-                >
-                    <Ionicons name="arrow-back" size={24} color="#1F2937" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>
-                    Quản lý giao hàng {orders.length > 0 && `(${orders.length})`}
-                </Text>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => fetchOrders(true)}
-                >
-                    <Ionicons name="refresh" size={24} color="#1F2937" />
-                </TouchableOpacity>
+                <View>
+                    <Text style={styles.headerTitle}>Quản lý giao hàng</Text>
+                    <Text style={styles.headerSubtitle}>
+                        {orders.length} đơn hàng
+                    </Text>
+                </View>
+                <View style={styles.headerRight}>
+                    <TouchableOpacity
+                        style={styles.refreshButton}
+                        onPress={() => fetchOrders(true)}
+                    >
+                        <Ionicons name="refresh" size={22} color="#047857" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.logoutButton}
+                        onPress={handleLogout}
+                    >
+                        <Ionicons name="log-out-outline" size={22} color="#EF4444" />
+                    </TouchableOpacity>
+                </View>
             </View>
 
-            {renderFilterTabs()}
-
             <FlatList
-                data={filteredOrders}
+                data={orders}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={renderOrderCard}
                 contentContainerStyle={styles.listContainer}
                 showsVerticalScrollIndicator={false}
                 ListHeaderComponent={
-                    filteredOrders.length > 0 ? renderStats : null
+                    orders.length > 0 ? renderStats : null
                 }
                 ListEmptyComponent={renderEmptyState}
                 refreshControl={
@@ -764,21 +673,41 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 16,
         backgroundColor: "#FFF",
         borderBottomWidth: 1,
         borderBottomColor: "#E5E7EB",
     },
-    backButton: {
-        width: 40,
-        height: 40,
-        justifyContent: "center",
-        alignItems: "center",
-    },
     headerTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: "bold",
         color: "#1F2937",
+    },
+    headerSubtitle: {
+        fontSize: 13,
+        color: "#6B7280",
+        marginTop: 2,
+    },
+    headerRight: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    refreshButton: {
+        width: 44,
+        height: 44,
+        justifyContent: "center",
+        alignItems: "center",
+        borderRadius: 22,
+        backgroundColor: "#F3F4F6",
+    },
+    logoutButton: {
+        width: 44,
+        height: 44,
+        justifyContent: "center",
+        alignItems: "center",
+        borderRadius: 22,
+        backgroundColor: "#FEE2E2",
     },
     loadingContainer: {
         flex: 1,
@@ -790,127 +719,68 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#6B7280",
     },
-    filterContainer: {
-        backgroundColor: "#FFF",
-        borderBottomWidth: 1,
-        borderBottomColor: "#E5E7EB",
-    },
-    filterList: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        gap: 8,
-    },
-    filterButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: "#F3F4F6",
-        marginRight: 8,
-        gap: 6,
-    },
-    filterButtonActive: {
-        backgroundColor: "#047857",
-    },
-    filterButtonText: {
-        fontSize: 13,
-        fontWeight: "600",
-        color: "#6B7280",
-    },
-    filterButtonTextActive: {
-        color: "#FFF",
-    },
-    filterBadge: {
-        backgroundColor: "#E5E7EB",
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 10,
-        minWidth: 20,
-        alignItems: "center",
-    },
-    filterBadgeActive: {
-        backgroundColor: "rgba(255, 255, 255, 0.3)",
-    },
-    filterBadgeText: {
-        fontSize: 11,
-        fontWeight: "600",
-        color: "#374151",
-    },
-    filterBadgeTextActive: {
-        color: "#FFF",
-    },
     listContainer: {
         padding: 16,
+        paddingBottom: 20,
     },
     statsContainer: {
-        flexDirection: "row",
-        gap: 12,
-        marginBottom: 16,
+        marginBottom: 20,
     },
     statCard: {
         backgroundColor: "#FFF",
-        borderRadius: 12,
-        padding: 16,
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
         elevation: 2,
     },
-    statCardLarge: {
-        flex: 1,
-        gap: 8,
-    },
-    statCardHeader: {
+    statCardTop: {
         flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-    },
-    statBadge: {
-        backgroundColor: "#F0FDF4",
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
+        alignItems: "center",
+        gap: 12,
+        marginBottom: 12,
     },
     statBadgeText: {
-        fontSize: 11,
+        fontSize: 14,
         fontWeight: "600",
-        color: "#047857",
-    },
-    statAmount: {
-        fontSize: 24,
-        fontWeight: "bold",
-        color: "#047857",
-    },
-    statLabel: {
-        fontSize: 12,
         color: "#6B7280",
     },
-    statColumn: {
+    statAmount: {
+        fontSize: 32,
+        fontWeight: "bold",
+        color: "#047857",
+        marginBottom: 4,
+    },
+    statLabel: {
+        fontSize: 13,
+        color: "#9CA3AF",
+    },
+    statsGrid: {
+        flexDirection: "row",
+        justifyContent: "space-between",
         gap: 12,
     },
-    statCardSmall: {
-        backgroundColor: "#FFF",
+    statBox: {
+        flex: 1,
+        backgroundColor: "#F9FAFB",
         borderRadius: 12,
         padding: 12,
         alignItems: "center",
-        gap: 6,
-        width: 100,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        justifyContent: "center",
     },
-    statNumberSmall: {
-        fontSize: 20,
+    statNumber: {
+        fontSize: 24,
         fontWeight: "bold",
         color: "#1F2937",
+        marginTop: 8,
     },
-    statLabelSmall: {
+    statSmallLabel: {
         fontSize: 11,
         color: "#6B7280",
+        marginTop: 4,
         textAlign: "center",
     },
     orderCard: {
