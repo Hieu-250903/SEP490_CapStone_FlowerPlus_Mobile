@@ -51,7 +51,7 @@ export default function LoginScreen() {
           Alert.alert("Thành công", res.message || "Đăng nhập thành công", [
             {
               text: "OK",
-              onPress: () => router.replace("/(tabs)/home"),
+              onPress: () => router.replace("/(tabs)"),
             },
           ]);
         }
