@@ -1,8 +1,10 @@
 import ProductCard from "@/components/ProductCard";
 import { PRODUCTS } from "@/constants/Products";
+import { getAllProduct } from "@/services/product";
+import { getAllCategories } from "@/services/categories";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   Dimensions,
   FlatList,
@@ -12,6 +14,8 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -64,7 +68,81 @@ const brands = [
 
 export default function HomeScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const carouselRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [selectedCategory]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await getAllCategories();
+      if (response?.data && response.data.length > 0) {
+        // Flatten nested categories
+        const flatCategories: any[] = [];
+        
+        const flatten = (items: any[]) => {
+          items.forEach((item) => {
+            flatCategories.push({
+              id: item.id,
+              name: item.name,
+            });
+            if (item.children && item.children.length > 0) {
+              flatten(item.children);
+            }
+          });
+        };
+
+        flatten(response.data);
+        
+        if (flatCategories.length > 0) {
+          setCategories(flatCategories);
+          // Set first category as default
+          setSelectedCategory(flatCategories[0].name);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const params: any = {
+        active: true,
+        pageNumber: 1,
+        pageSize: 20,
+      };
+
+      if (selectedCategory) {
+        const category = categories.find((c) => c.name === selectedCategory);
+        if (category) {
+          params.categoryId = category.id;
+        }
+      }
+
+      const response = await getAllProduct(params);
+      if (response?.data) {
+        setProducts(response.data);
+      } else {
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleScroll = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -150,127 +228,65 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={styles.howItWorksSection}>
-          <View style={styles.howItWorksCard}>
-            <View style={styles.stepsContainer}>
-              {steps.map((step, index) => (
-                <View key={index} style={styles.stepItem}>
-                  <View style={styles.stepIconContainer}>
-                    <Ionicons
-                      name={step.icon as any}
-                      size={32}
-                      color="#EF4444"
-                    />
-                  </View>
-                  <Text style={styles.stepTitle}>{step.title}</Text>
-                  <Text style={styles.stepDescription}>{step.description}</Text>
-                  {index < steps.length - 1 && (
-                    <View style={styles.stepDivider} />
-                  )}
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.lovedBySection}>
-            <Text style={styles.lovedByTitle}>ĐƯỢC YÊU THÍCH BỞI</Text>
-            <View style={styles.brandsContainer}>
-              {brands.map((brand, index) => (
-                <Text key={index} style={styles.brandText}>
-                  {brand}
+        <View style={styles.categoryTabsContainer}>
+          <FlatList
+            data={categories}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.categoryTabsList}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryTab,
+                  selectedCategory === item.name && styles.categoryTabActive,
+                ]}
+                onPress={() => setSelectedCategory(item.name)}
+              >
+                <Text
+                  style={[
+                    styles.categoryTabText,
+                    selectedCategory === item.name && styles.categoryTabTextActive,
+                  ]}
+                >
+                  {item.name}
                 </Text>
-              ))}
-            </View>
-          </View>
+              </TouchableOpacity>
+            )}
+          />
         </View>
 
         <View style={styles.productSection}>
-          <View style={[styles.sectionWrapper, { backgroundColor: "#FFF" }]}>
+          <View style={styles.sectionWrapper}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🔥 BÓ HOA RẺ HÔM NAY</Text>
+              <Text style={styles.sectionTitle}>
+                {selectedCategory || "Sản phẩm"}
+              </Text>
               <TouchableOpacity>
                 <Text style={styles.seeAllText}>Xem tất cả</Text>
               </TouchableOpacity>
             </View>
 
-            <FlatList
-              data={PRODUCTS.slice(0, 5)}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id.toString()}
-              contentContainerStyle={styles.productsHorizontal}
-              renderItem={({ item }) => (
-                <View style={{ width: width * 0.45 }}>
-                  <ProductCard product={item} />
-                </View>
-              )}
-            />
-          </View>
-
-          <View style={[styles.sectionWrapper, { backgroundColor: "#F3E2D9" }]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🌹 HOA HỒNG</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAllText}>Xem tất cả</Text>
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={PRODUCTS.slice(0, 5)}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id.toString()}
-              contentContainerStyle={styles.productsHorizontal}
-              renderItem={({ item }) => (
-                <View style={{ width: width * 0.45 }}>
-                  <ProductCard product={item} />
-                </View>
-              )}
-            />
-          </View>
-
-          <View style={[styles.sectionWrapper, { backgroundColor: "#FFF" }]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>💐 HOA LY</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAllText}>Xem tất cả</Text>
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={PRODUCTS.slice(0, 5)}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id.toString()}
-              contentContainerStyle={styles.productsHorizontal}
-              renderItem={({ item }) => (
-                <View style={{ width: width * 0.45 }}>
-                  <ProductCard product={item} />
-                </View>
-              )}
-            />
-          </View>
-
-          <View style={[styles.sectionWrapper, { backgroundColor: "#F3E2D9" }]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🌼 HOA CÚC</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAllText}>Xem tất cả</Text>
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={PRODUCTS.slice(0, 5)}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id.toString()}
-              contentContainerStyle={styles.productsHorizontal}
-              renderItem={({ item }) => (
-                <View style={{ width: width * 0.45 }}>
-                  <ProductCard product={item} />
-                </View>
-              )}
-            />
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#047857" />
+              </View>
+            ) : products.length > 0 ? (
+              <FlatList
+                data={products}
+                numColumns={2}
+                scrollEnabled={false}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={styles.productsGrid}
+                renderItem={({ item }) => (
+                  <View style={{ width: width / 2 - 16 }}>
+                    <ProductCard product={item} />
+                  </View>
+                )}
+              />
+            ) : (
+              <Text style={styles.noProductText}>Không có sản phẩm</Text>
+            )}
           </View>
         </View>
 
@@ -475,5 +491,197 @@ const styles = StyleSheet.create({
   productsHorizontal: {
     paddingHorizontal: 16,
     gap: 12,
+  },
+  loadingContainer: {
+    height: 200,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  noProductText: {
+    fontSize: 14,
+    color: "#9CA3AF",
+    textAlign: "center",
+    paddingVertical: 20,
+  },
+  filterBarContainer: {
+    backgroundColor: "#FFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  filterBadge: {
+    backgroundColor: "#EF4444",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterBadgeText: {
+    color: "#FFF",
+    fontSize: 11,
+    fontWeight: "bold",
+  },
+  sortButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sortButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    flex: 1,
+    backgroundColor: "#FFF",
+    marginTop: 60,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1F2937",
+  },
+  modalBody: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  filterSection: {
+    marginBottom: 24,
+  },
+  filterSectionTitle: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#1F2937",
+    marginBottom: 12,
+  },
+  filterOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: 8,
+    backgroundColor: "#F9FAFB",
+  },
+  filterOptionActive: {
+    backgroundColor: "#D1FAE5",
+    borderColor: "#047857",
+  },
+  filterCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    backgroundColor: "#047857",
+    justifyContent: "center",
+    alignItems: "center",
+    opacity: 0,
+  },
+  filterOptionActive_checkbox: {
+    opacity: 1,
+  },
+  filterOptionText: {
+    fontSize: 14,
+    color: "#374151",
+  },
+  modalFooter: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
+  resetButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  resetButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  applyButton: {
+    flex: 1,
+    backgroundColor: "#047857",
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  applyButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFF",
+  },
+  categoryTabsContainer: {
+    backgroundColor: "#FFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+    paddingVertical: 8,
+  },
+  categoryTabsList: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  categoryTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#F3F4F6",
+    marginRight: 8,
+  },
+  categoryTabActive: {
+    backgroundColor: "#047857",
+  },
+  categoryTabText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  categoryTabTextActive: {
+    color: "#FFF",
+  },
+  productsGrid: {
+    paddingHorizontal: 8,
+    gap: 8,
   },
 });
