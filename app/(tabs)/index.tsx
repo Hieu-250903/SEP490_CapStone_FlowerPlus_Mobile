@@ -30,7 +30,7 @@ const flowerImages = [
 const features = [
   { icon: "heart", text: "Miễn Phí Thiệp Xinh" },
   { icon: "star", text: "Hoa Đẹp Chỉ Từ 300k" },
-  { icon: "car", text: "Giao Hoa Tận Nơi TPHCM" },
+  { icon: "car", text: "Giao Hoa Tận Nơi TP Đà Nẵng" },
 ];
 
 const steps = [
