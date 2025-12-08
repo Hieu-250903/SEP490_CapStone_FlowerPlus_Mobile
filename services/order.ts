@@ -64,6 +64,16 @@ export const getOrderDetail = async (orderId: number) => {
   }
 };
 
+export const getOrderByCode = async (orderCode: string) => {
+  try {
+    const response = await instance.get(`/orders/get-order-by-code?orderCode=${orderCode}`);
+    return response;
+  } catch (error) {
+    console.error("Error getting order by code:", error);
+    throw error;
+  }
+};
+
 export const cancelOrder = async (orderId: number) => {
   try {
     const response = await instance.post(`/orders/${orderId}/cancel`);
@@ -111,6 +121,7 @@ export default {
   webhookPayos,
   getOrders,
   getOrderDetail,
+  getOrderByCode,
   cancelOrder,
   getListOrdersByShipper,
   updateOrderStatus,

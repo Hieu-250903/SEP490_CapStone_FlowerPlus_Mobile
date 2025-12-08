@@ -134,10 +134,6 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
               <LinearGradient
                 colors={["#047857", "#059669"]}
@@ -149,24 +145,6 @@ export default function LoginScreen() {
                   <Text style={styles.loginButtonText}>Đăng nhập</Text>
                 )}
               </LinearGradient>
-            </TouchableOpacity>
-
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Hoặc</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity style={styles.socialButton}>
-              <Ionicons name="logo-google" size={20} color="#DB4437" />
-              <Text style={styles.socialButtonText}>Đăng nhập với Google</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.socialButton}>
-              <Ionicons name="logo-facebook" size={20} color="#1877F2" />
-              <Text style={styles.socialButtonText}>
-                Đăng nhập với Facebook
-              </Text>
             </TouchableOpacity>
 
             <View style={styles.registerContainer}>

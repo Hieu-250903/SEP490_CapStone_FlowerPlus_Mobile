@@ -281,9 +281,6 @@ export default function CheckoutScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
-            <TouchableOpacity style={styles.btnAddAddress}>
-              <Text style={styles.btnAddAddressText}>+ Thêm địa chỉ mới</Text>
-            </TouchableOpacity>
           </View>
           <View style={styles.addressListContainer}>
             {!isAddressExpanded ? (

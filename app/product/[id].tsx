@@ -1,4 +1,3 @@
-import { PRODUCTS } from "@/constants/Products";
 import { addToCart } from "@/services/cart";
 import { getProductDetail } from "@/services/product";
 import { Ionicons } from "@expo/vector-icons";
@@ -113,10 +112,6 @@ export default function ProductDetailScreen() {
 
   const isInStock = product.stock > 0;
 
-  const relatedProducts = PRODUCTS.filter(
-    (p) => p.category === categoryName && p.id !== product.id
-  ).slice(0, 4);
-
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -130,9 +125,7 @@ export default function ProductDetailScreen() {
 
           <Text style={styles.headerTitle}>Chi tiết sản phẩm</Text>
 
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="share-social-outline" size={22} color="#1F2937" />
-          </TouchableOpacity>
+          <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.trustBadges}>
@@ -440,55 +433,6 @@ export default function ProductDetailScreen() {
             </View>
           </View>
 
-          {relatedProducts.length > 0 && (
-            <View style={styles.relatedSection}>
-              <View style={styles.relatedHeader}>
-                <Text style={styles.relatedTitle}>Có thể bạn sẽ thích</Text>
-                <TouchableOpacity onPress={() => router.push("/")}>
-                  <Text style={styles.seeMoreText}>Xem thêm</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.relatedGrid}>
-                {relatedProducts.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.relatedCard}
-                    onPress={() => router.push(`/product/${item.id}`)}
-                  >
-                    <View style={styles.relatedImageContainer}>
-                      <Image
-                        source={{ uri: item.image }}
-                        style={styles.relatedImage}
-                      />
-                      {item.discount > 0 && (
-                        <View style={styles.relatedBadge}>
-                          <Text style={styles.relatedBadgeText}>
-                            -{item.discount}%
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                    <View style={styles.relatedInfo}>
-                      <Text style={styles.relatedName} numberOfLines={2}>
-                        {item.name}
-                      </Text>
-                      <View style={styles.relatedPriceRow}>
-                        {item.originalPrice !== item.discountedPrice && (
-                          <Text style={styles.relatedOriginalPrice}>
-                            {formatVND(item.originalPrice)}
-                          </Text>
-                        )}
-                        <Text style={styles.relatedPrice}>
-                          {formatVND(item.discountedPrice)}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
         </View>
 
         <View style={{ height: 100 }} />

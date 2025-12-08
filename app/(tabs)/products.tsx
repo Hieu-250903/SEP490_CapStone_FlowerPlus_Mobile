@@ -189,17 +189,6 @@ export default function ProductsScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Sản phẩm</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="heart-outline" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="cart-outline" size={24} color="#1F2937" />
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>3</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
       </View>
 
       <View style={styles.searchSection}>
@@ -349,7 +338,7 @@ export default function ProductsScreen() {
                     style={[
                       styles.filterOption,
                       selectedCategory === cat.name &&
-                        styles.filterOptionActive,
+                      styles.filterOptionActive,
                     ]}
                     onPress={() => {
                       setSelectedCategory(cat.name);
@@ -360,7 +349,7 @@ export default function ProductsScreen() {
                       style={[
                         styles.filterOptionText,
                         selectedCategory === cat.name &&
-                          styles.filterOptionTextActive,
+                        styles.filterOptionTextActive,
                       ]}
                     >
                       {cat.name}
@@ -387,7 +376,7 @@ export default function ProductsScreen() {
                       style={[
                         styles.filterOptionText,
                         priceRange === range.value &&
-                          styles.filterOptionTextActive,
+                        styles.filterOptionTextActive,
                       ]}
                     >
                       {range.label}

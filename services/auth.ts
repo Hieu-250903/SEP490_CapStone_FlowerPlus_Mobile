@@ -10,7 +10,9 @@ export const userRegisterApi = async (userData: RegisterData) => {
   try {
     const response = await instance.post("/auth/register", userData);
     return response;
-  } catch (error) {}
+  } catch (error) {
+    throw error;
+  }
 };
 
 export const userLoginApi = async (credentials: {
@@ -23,14 +25,18 @@ export const userLoginApi = async (credentials: {
       password: credentials.password,
     });
     return response;
-  } catch (error) {}
+  } catch (error) {
+    throw error;
+  }
 };
 
 export const userProfileApi = async () => {
   try {
     const response = await instance.get("/auth/me?includeRole=false");
     return response;
-  } catch (error) {}
+  } catch (error) {
+    throw error;
+  }
 };
 
 export const authService = {

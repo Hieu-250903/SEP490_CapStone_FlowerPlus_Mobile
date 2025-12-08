@@ -87,9 +87,10 @@ export default function UploadImageRN({
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsMultipleSelection: multiple,
-        quality: 0.8,
+        quality: 0.3, // Reduced quality to avoid "Maximum upload size exceeded" error
         allowsEditing: !multiple,
         aspect: [4, 3],
+        exif: false, // Don't include EXIF data to reduce file size
       });
 
       if (!result.canceled && result.assets.length > 0) {
@@ -160,8 +161,10 @@ export default function UploadImageRN({
 
       clearInterval(progressInterval);
 
+      console.log('Upload response:', JSON.stringify(res?.data));
+
       const imageUrl = res?.data?.url || res?.data;
-      if (imageUrl) {
+      if (imageUrl && typeof imageUrl === 'string') {
         setItems((prev) =>
           prev.map((i) =>
             i.id === item.id
@@ -169,17 +172,27 @@ export default function UploadImageRN({
               : i
           )
         );
+      } else {
+        // Handle case when no URL is returned
+        console.error('Upload response missing URL:', res?.data);
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === item.id
+              ? { ...i, status: 'error', error: 'Không nhận được URL' }
+              : i
+          )
+        );
       }
     } catch (err: any) {
-      console.error('Upload error:', err);
+      console.error('Upload error:', err?.response?.data || err?.message || err);
       setItems((prev) =>
         prev.map((i) =>
           i.id === item.id
-            ? { ...i, status: 'error', error: 'Upload thất bại' }
+            ? { ...i, status: 'error', error: err?.response?.data?.message || 'Upload thất bại' }
             : i
         )
       );
-      Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
+      Alert.alert('Lỗi', err?.response?.data?.message || 'Không thể tải ảnh lên. Vui lòng thử lại.');
     }
   };
 

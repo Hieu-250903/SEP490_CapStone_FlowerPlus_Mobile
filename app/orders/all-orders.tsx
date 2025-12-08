@@ -23,9 +23,20 @@ interface OrderItem {
   lineTotal: number;
 }
 
+interface DeliveryStatus {
+  id: number;
+  step: string;
+  note: string;
+  createdAt: string;
+}
+
+interface Transaction {
+  status: string;
+  amount: number;
+}
+
 interface Order {
   orderCode: string;
-  status: string;
   total: number;
   items: OrderItem[];
   user: {
@@ -34,33 +45,53 @@ interface Order {
     email: string;
     avatar: string;
   };
-  transactions?: any[];
+  deliveryStatuses: DeliveryStatus[];
+  transaction: Transaction;
 }
 
-type OrderStatus =
+const getCurrentStep = (order: Order): string => {
+  if (order.deliveryStatuses && order.deliveryStatuses.length > 0) {
+    return order.deliveryStatuses[order.deliveryStatuses.length - 1].step;
+  }
+  return order.transaction?.status === "PENDING" ? "PENDING_CONFIRMATION" : "PENDING_CONFIRMATION";
+};
+
+type DeliveryStep =
   | "ALL"
-  | "UNPAID"
-  | "PAID"
-  | "SHIPPING"
+  | "PENDING_CONFIRMATION"
+  | "PREPARING"
+  | "DELIVERING"
   | "DELIVERED"
-  | "CANCELLED";
+  | "DELIVERY_FAILED";
 
 const STATUS_COLORS: Record<
   string,
   { bg: string; text: string; icon: string }
 > = {
-  UNPAID: { bg: "#FEF3C7", text: "#92400E", icon: "time-outline" },
-  PAID: { bg: "#D1FAE5", text: "#065F46", icon: "checkmark-circle" },
-  SHIPPING: { bg: "#DBEAFE", text: "#1E40AF", icon: "car-outline" },
+  PENDING_CONFIRMATION: { bg: "#FEF3C7", text: "#92400E", icon: "time-outline" },
+  PREPARING: { bg: "#DBEAFE", text: "#1E40AF", icon: "cube-outline" },
+  DELIVERING: { bg: "#E0E7FF", text: "#4338CA", icon: "car-outline" },
   DELIVERED: { bg: "#D1FAE5", text: "#047857", icon: "checkmark-done" },
-  CANCELLED: { bg: "#FEE2E2", text: "#991B1B", icon: "close-circle" },
+  DELIVERY_FAILED: { bg: "#FEE2E2", text: "#991B1B", icon: "close-circle" },
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  UNPAID: "Chưa thanh toán",
-  PAID: "Đã thanh toán",
-  SHIPPING: "Đang giao",
+  PENDING_CONFIRMATION: "Chờ xác nhận",
+  PREPARING: "Đang chuẩn bị",
+  DELIVERING: "Đang giao",
   DELIVERED: "Đã giao",
+  DELIVERY_FAILED: "Giao thất bại",
+};
+
+const PAYMENT_STATUS_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
+  PENDING: { bg: "#FEF3C7", text: "#92400E", icon: "time-outline" },
+  SUCCESS: { bg: "#D1FAE5", text: "#047857", icon: "checkmark-circle" },
+  CANCELLED: { bg: "#FEE2E2", text: "#991B1B", icon: "close-circle" },
+};
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Chờ thanh toán",
+  SUCCESS: "Đã thanh toán",
   CANCELLED: "Đã hủy",
 };
 
@@ -70,7 +101,7 @@ const AllOrder = () => {
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>("ALL");
+  const [selectedStatus, setSelectedStatus] = useState<DeliveryStep>("ALL");
 
   useEffect(() => {
     fetchOrders();
@@ -91,6 +122,7 @@ const AllOrder = () => {
       const response = await getOrders();
 
       if (response?.data) {
+        console.log("Orders fetched successfully:", response.data);
         setOrders(response.data);
       } else {
         setOrders([]);
@@ -109,7 +141,7 @@ const AllOrder = () => {
       setFilteredOrders(orders);
     } else {
       setFilteredOrders(
-        orders.filter((order) => order.status === selectedStatus)
+        orders.filter((order) => getCurrentStep(order) === selectedStatus)
       );
     }
   };
@@ -127,7 +159,6 @@ const AllOrder = () => {
 
   const formatDate = (orderCode: string) => {
     try {
-      // orderCode is timestamp in seconds, convert to milliseconds
       const timestamp = parseInt(orderCode) * 1000;
       const date = new Date(timestamp);
       return date.toLocaleDateString("vi-VN", {
@@ -156,37 +187,28 @@ const AllOrder = () => {
     return STATUS_LABELS[status] || status;
   };
 
-  const handleOrderPress = (order: Order) => {
-    router.push({
-      pathname: "/(screen)/OrderDetailScreen",
-      params: {
-        orderCode: order.orderCode,
-      },
-    });
-  };
-
   const renderStatusFilter = () => {
-    const statuses: { key: OrderStatus; label: string; count?: number }[] = [
+    const statuses: { key: DeliveryStep; label: string; count?: number }[] = [
       { key: "ALL", label: "Tất cả", count: orders.length },
       {
-        key: "UNPAID",
-        label: "Chưa TT",
-        count: orders.filter((o) => o.status === "UNPAID").length,
+        key: "PENDING_CONFIRMATION",
+        label: "Chờ XN",
+        count: orders.filter((o) => getCurrentStep(o) === "PENDING_CONFIRMATION").length,
       },
       {
-        key: "PAID",
-        label: "Đã TT",
-        count: orders.filter((o) => o.status === "PAID").length,
+        key: "PREPARING",
+        label: "Chuẩn bị",
+        count: orders.filter((o) => getCurrentStep(o) === "PREPARING").length,
       },
       {
-        key: "SHIPPING",
+        key: "DELIVERING",
         label: "Đang giao",
-        count: orders.filter((o) => o.status === "SHIPPING").length,
+        count: orders.filter((o) => getCurrentStep(o) === "DELIVERING").length,
       },
       {
         key: "DELIVERED",
         label: "Hoàn thành",
-        count: orders.filter((o) => o.status === "DELIVERED").length,
+        count: orders.filter((o) => getCurrentStep(o) === "DELIVERED").length,
       },
     ];
 
@@ -225,7 +247,7 @@ const AllOrder = () => {
                     style={[
                       styles.filterBadgeText,
                       selectedStatus === item.key &&
-                        styles.filterBadgeTextActive,
+                      styles.filterBadgeTextActive,
                     ]}
                   >
                     {item.count}
@@ -240,14 +262,13 @@ const AllOrder = () => {
   };
 
   const renderOrderCard = ({ item: order }: { item: Order }) => {
-    const statusStyle = getStatusStyle(order.status);
+    const currentStep = getCurrentStep(order);
+    const statusStyle = getStatusStyle(currentStep);
     const itemCount = order.items.length;
 
     return (
-      <TouchableOpacity
+      <View
         style={styles.orderCard}
-        onPress={() => handleOrderPress(order)}
-        activeOpacity={0.7}
       >
         <View style={styles.orderHeader}>
           <View style={styles.orderHeaderLeft}>
@@ -263,7 +284,7 @@ const AllOrder = () => {
               color={statusStyle.text}
             />
             <Text style={[styles.statusText, { color: statusStyle.text }]}>
-              {getStatusLabel(order.status)}
+              {getStatusLabel(currentStep)}
             </Text>
           </View>
         </View>
@@ -291,6 +312,24 @@ const AllOrder = () => {
             <Text style={styles.infoLabel}>Số lượng:</Text>
             <Text style={styles.infoValue}>{itemCount} sản phẩm</Text>
           </View>
+
+          {order.transaction && (
+            <View style={styles.infoRow}>
+              <Ionicons name="card-outline" size={18} color="#6B7280" />
+              <Text style={styles.infoLabel}>Thanh toán:</Text>
+              <View style={[
+                styles.paymentBadge,
+                { backgroundColor: (PAYMENT_STATUS_COLORS[order.transaction.status] || PAYMENT_STATUS_COLORS.PENDING).bg }
+              ]}>
+                <Text style={[
+                  styles.paymentBadgeText,
+                  { color: (PAYMENT_STATUS_COLORS[order.transaction.status] || PAYMENT_STATUS_COLORS.PENDING).text }
+                ]}>
+                  {PAYMENT_STATUS_LABELS[order.transaction.status] || order.transaction.status}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={styles.divider} />
@@ -300,13 +339,8 @@ const AllOrder = () => {
             <Text style={styles.totalLabel}>Tổng tiền:</Text>
             <Text style={styles.totalAmount}>{formatVND(order.total)}</Text>
           </View>
-
-          <TouchableOpacity style={styles.detailButton}>
-            <Text style={styles.detailButtonText}>Xem chi tiết</Text>
-            <Ionicons name="chevron-forward" size={16} color="#047857" />
-          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -611,6 +645,16 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     textAlign: "center",
     lineHeight: 20,
+  },
+  paymentBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  paymentBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
 });
 
