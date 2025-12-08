@@ -1,7 +1,7 @@
 import UploadImageRN from "@/components/UploadImageRN";
 import { getListOrdersByShipper, updateOrderStatus } from "@/services/order";
-import { authService } from "@/services/auth";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -65,6 +65,8 @@ interface Order {
     deliveryStatuses: DeliveryStatus[];
 }
 
+type FilterStatus = "ALL" | "PENDING_CONFIRMATION" | "PREPARING" | "DELIVERING" | "DELIVERED" | "DELIVERY_FAILED";
+
 const STATUS_COLORS: Record<
     string,
     { bg: string; text: string; icon: string }
@@ -87,8 +89,10 @@ const STATUS_LABELS: Record<string, string> = {
 const ShipperScreen = () => {
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]);
+    const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [selectedStatus, setSelectedStatus] = useState<FilterStatus>("ALL");
 
     // Update status modal states
     const [updateModalVisible, setUpdateModalVisible] = useState(false);
@@ -104,6 +108,10 @@ const ShipperScreen = () => {
     useEffect(() => {
         fetchOrders();
     }, []);
+
+    useEffect(() => {
+        filterOrders();
+    }, [selectedStatus, orders]);
 
     const fetchOrders = async (isRefresh = false) => {
         try {
@@ -132,26 +140,22 @@ const ShipperScreen = () => {
         }
     };
 
+    const filterOrders = () => {
+        if (selectedStatus === "ALL") {
+            setFilteredOrders(orders);
+        } else {
+            setFilteredOrders(
+                orders.filter((order) => {
+                    const latestStatus = getLatestStatus(order.deliveryStatuses);
+                    return latestStatus === selectedStatus;
+                })
+            );
+        }
+    };
+
     const onRefresh = useCallback(() => {
         fetchOrders(true);
     }, []);
-
-    const handleLogout = () => {
-        Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
-            {
-                text: "Hủy",
-                style: "cancel",
-            },
-            {
-                text: "Đăng xuất",
-                style: "destructive",
-                onPress: async () => {
-                    await authService.clearAuth();
-                    router.replace("/(auth)/login");
-                },
-            },
-        ]);
-    };
 
     const formatVND = (price: number) => {
         return new Intl.NumberFormat("vi-VN", {
@@ -180,7 +184,7 @@ const ShipperScreen = () => {
         if (!deliveryStatuses || deliveryStatuses.length === 0) {
             return "PENDING_CONFIRMATION";
         }
-        return deliveryStatuses[0].step;
+        return deliveryStatuses[deliveryStatuses.length - 1].step;
     };
 
     const getStatusStyle = (status: string) => {
@@ -248,13 +252,106 @@ const ShipperScreen = () => {
             await updateOrderStatus(selectedOrder.id, updateFormData);
             Alert.alert("Thành công", "Đã cập nhật trạng thái đơn hàng");
             handleCloseUpdateModal();
-            fetchOrders(true);
+            fetchOrders(true); // Refresh orders
         } catch (error) {
             console.error("Error updating order status:", error);
             Alert.alert("Lỗi", "Không thể cập nhật trạng thái đơn hàng");
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const renderFilterTabs = () => {
+        const statuses: {
+            key: FilterStatus;
+            label: string;
+            count?: number;
+        }[] = [
+                { key: "ALL", label: "Tất cả", count: orders.length },
+                {
+                    key: "PENDING_CONFIRMATION",
+                    label: "Chờ xác nhận",
+                    count: orders.filter(
+                        (o) => getLatestStatus(o.deliveryStatuses) === "PENDING_CONFIRMATION"
+                    ).length,
+                },
+                {
+                    key: "PREPARING",
+                    label: "Đang chuẩn bị",
+                    count: orders.filter(
+                        (o) => getLatestStatus(o.deliveryStatuses) === "PREPARING"
+                    ).length,
+                },
+                {
+                    key: "DELIVERING",
+                    label: "Đang giao",
+                    count: orders.filter(
+                        (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERING"
+                    ).length,
+                },
+                {
+                    key: "DELIVERED",
+                    label: "Hoàn thành",
+                    count: orders.filter(
+                        (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERED"
+                    ).length,
+                },
+                {
+                    key: "DELIVERY_FAILED",
+                    label: "Thất bại",
+                    count: orders.filter(
+                        (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERY_FAILED"
+                    ).length,
+                },
+            ];
+
+        return (
+            <View style={styles.filterContainer}>
+                <FlatList
+                    horizontal
+                    data={statuses}
+                    keyExtractor={(item) => item.key}
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filterList}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={[
+                                styles.filterButton,
+                                selectedStatus === item.key && styles.filterButtonActive,
+                            ]}
+                            onPress={() => setSelectedStatus(item.key)}
+                        >
+                            <Text
+                                style={[
+                                    styles.filterButtonText,
+                                    selectedStatus === item.key && styles.filterButtonTextActive,
+                                ]}
+                            >
+                                {item.label}
+                            </Text>
+                            {item.count !== undefined && item.count > 0 && (
+                                <View
+                                    style={[
+                                        styles.filterBadge,
+                                        selectedStatus === item.key && styles.filterBadgeActive,
+                                    ]}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.filterBadgeText,
+                                            selectedStatus === item.key &&
+                                            styles.filterBadgeTextActive,
+                                        ]}
+                                    >
+                                        {item.count}
+                                    </Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    )}
+                />
+            </View>
+        );
     };
 
     const renderOrderCard = ({ item: order }: { item: Order }) => {
@@ -355,7 +452,7 @@ const ShipperScreen = () => {
                             Sản phẩm ({order.items?.length || 0})
                         </Text>
                     </View>
-                    {order.items?.slice(0, 2).map((item) => (
+                    {order.items?.slice(0, 2).map((item, index) => (
                         <View key={item.id} style={styles.itemRow}>
                             {item.productImage &&
                                 (item.productImage.startsWith('http://') ||
@@ -420,15 +517,21 @@ const ShipperScreen = () => {
             <View style={styles.emptyIconContainer}>
                 <Ionicons name="bicycle-outline" size={64} color="#D1D5DB" />
             </View>
-            <Text style={styles.emptyTitle}>Chưa có đơn hàng nào</Text>
+            <Text style={styles.emptyTitle}>
+                {selectedStatus === "ALL"
+                    ? "Chưa có đơn hàng nào"
+                    : `Không có đơn ${getStatusLabel(selectedStatus).toLowerCase()}`}
+            </Text>
             <Text style={styles.emptyText}>
-                Danh sách đơn hàng sẽ hiển thị tại đây
+                {selectedStatus === "ALL"
+                    ? "Danh sách đơn hàng sẽ hiển thị tại đây"
+                    : "Thử chọn trạng thái khác để xem đơn hàng"}
             </Text>
         </View>
     );
 
     const renderStats = () => {
-        const totalRevenue = orders.reduce(
+        const totalRevenue = filteredOrders.reduce(
             (sum, order) => sum + order.total,
             0
         );
@@ -438,41 +541,57 @@ const ShipperScreen = () => {
         const deliveredCount = orders.filter(
             (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERED"
         ).length;
-        const pendingCount = orders.filter(
-            (o) => getLatestStatus(o.deliveryStatuses) === "PENDING_CONFIRMATION"
-        ).length;
 
         return (
             <View style={styles.statsContainer}>
-                <View style={styles.statCard}>
-                    <View style={styles.statCardTop}>
+                <View style={[styles.statCard, styles.statCardLarge]}>
+                    <View style={styles.statCardHeader}>
                         <Ionicons name="wallet-outline" size={28} color="#047857" />
-                        <Text style={styles.statBadgeText}>Doanh thu</Text>
+                        <View style={styles.statBadge}>
+                            <Text style={styles.statBadgeText}>
+                                {selectedStatus === "ALL"
+                                    ? "Tổng"
+                                    : getStatusLabel(selectedStatus)}
+                            </Text>
+                        </View>
                     </View>
                     <Text style={styles.statAmount}>{formatVND(totalRevenue)}</Text>
                     <Text style={styles.statLabel}>
-                        {orders.length} đơn hàng
+                        {filteredOrders.length} đơn hàng
                     </Text>
                 </View>
 
-                <View style={styles.statsGrid}>
-                    <View style={styles.statBox}>
-                        <Ionicons name="time-outline" size={22} color="#F59E0B" />
-                        <Text style={styles.statNumber}>{pendingCount}</Text>
-                        <Text style={styles.statSmallLabel}>Chờ xác nhận</Text>
+                <View style={styles.statColumn}>
+                    <View style={styles.statCardSmall}>
+                        <Ionicons name="bicycle-outline" size={20} color="#6366F1" />
+                        <Text style={styles.statNumberSmall}>{deliveringCount}</Text>
+                        <Text style={styles.statLabelSmall}>Đang giao</Text>
                     </View>
-                    <View style={styles.statBox}>
-                        <Ionicons name="bicycle-outline" size={22} color="#6366F1" />
-                        <Text style={styles.statNumber}>{deliveringCount}</Text>
-                        <Text style={styles.statSmallLabel}>Đang giao</Text>
-                    </View>
-                    <View style={styles.statBox}>
-                        <Ionicons name="checkmark-circle" size={22} color="#10B981" />
-                        <Text style={styles.statNumber}>{deliveredCount}</Text>
-                        <Text style={styles.statSmallLabel}>Hoàn thành</Text>
+                    <View style={styles.statCardSmall}>
+                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                        <Text style={styles.statNumberSmall}>{deliveredCount}</Text>
+                        <Text style={styles.statLabelSmall}>Hoàn thành</Text>
                     </View>
                 </View>
             </View>
+        );
+    };
+
+    const handleLogout = () => {
+        Alert.alert(
+            "Đăng xuất",
+            "Bạn có chắc chắn muốn đăng xuất?",
+            [
+                { text: "Hủy", style: "cancel" },
+                {
+                    text: "Đăng xuất",
+                    style: "destructive",
+                    onPress: async () => {
+                        await AsyncStorage.multiRemove(["auth_token", "user_data"]);
+                        router.replace("/(auth)/login");
+                    },
+                },
+            ]
         );
     };
 
@@ -480,13 +599,14 @@ const ShipperScreen = () => {
         return (
             <SafeAreaView style={styles.container} edges={["top"]}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Quản lý giao hàng</Text>
                     <TouchableOpacity
-                        style={styles.logoutButton}
+                        style={styles.backButton}
                         onPress={handleLogout}
                     >
-                        <Ionicons name="log-out-outline" size={22} color="#EF4444" />
+                        <Ionicons name="log-out-outline" size={24} color="#DC2626" />
                     </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Quản lý giao hàng</Text>
+                    <View style={styles.backButton} />
                 </View>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#047857" />
@@ -499,36 +619,33 @@ const ShipperScreen = () => {
     return (
         <SafeAreaView style={styles.container} edges={["top"]}>
             <View style={styles.header}>
-                <View>
-                    <Text style={styles.headerTitle}>Quản lý giao hàng</Text>
-                    <Text style={styles.headerSubtitle}>
-                        {orders.length} đơn hàng
-                    </Text>
-                </View>
-                <View style={styles.headerRight}>
-                    <TouchableOpacity
-                        style={styles.refreshButton}
-                        onPress={() => fetchOrders(true)}
-                    >
-                        <Ionicons name="refresh" size={22} color="#047857" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.logoutButton}
-                        onPress={handleLogout}
-                    >
-                        <Ionicons name="log-out-outline" size={22} color="#EF4444" />
-                    </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={handleLogout}
+                >
+                    <Ionicons name="log-out-outline" size={24} color="#DC2626" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>
+                    Quản lý giao hàng {orders.length > 0 && `(${orders.length})`}
+                </Text>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => fetchOrders(true)}
+                >
+                    <Ionicons name="refresh" size={24} color="#1F2937" />
+                </TouchableOpacity>
             </View>
 
+            {renderFilterTabs()}
+
             <FlatList
-                data={orders}
+                data={filteredOrders}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={renderOrderCard}
                 contentContainerStyle={styles.listContainer}
                 showsVerticalScrollIndicator={false}
                 ListHeaderComponent={
-                    orders.length > 0 ? renderStats : null
+                    filteredOrders.length > 0 ? renderStats : null
                 }
                 ListEmptyComponent={renderEmptyState}
                 refreshControl={
@@ -571,31 +688,42 @@ const ShipperScreen = () => {
                             <View style={styles.formGroup}>
                                 <Text style={styles.formLabel}>Trạng thái giao hàng *</Text>
                                 <View style={styles.statusOptions}>
-                                    {Object.keys(STATUS_COLORS).map((status) => (
-                                        <TouchableOpacity
-                                            key={status}
-                                            style={[
-                                                styles.statusOption,
-                                                updateFormData.step === status && styles.statusOptionActive,
-                                                { borderColor: STATUS_COLORS[status].bg }
-                                            ]}
-                                            onPress={() => setUpdateFormData({ ...updateFormData, step: status })}
-                                        >
-                                            <Ionicons
-                                                name={STATUS_COLORS[status].icon as any}
-                                                size={20}
-                                                color={updateFormData.step === status ? STATUS_COLORS[status].text : "#9CA3AF"}
-                                            />
-                                            <Text
+                                    {Object.keys(STATUS_COLORS).map((status) => {
+                                        const isActive = updateFormData.step === status;
+                                        return (
+                                            <TouchableOpacity
+                                                key={status}
                                                 style={[
-                                                    styles.statusOptionText,
-                                                    updateFormData.step === status && { color: STATUS_COLORS[status].text }
+                                                    styles.statusOption,
+                                                    isActive && styles.statusOptionActive,
                                                 ]}
+                                                onPress={() => setUpdateFormData({ ...updateFormData, step: status })}
                                             >
-                                                {getStatusLabel(status)}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
+                                                <View style={styles.statusOptionLeft}>
+                                                    <View style={[styles.statusIconContainer, { backgroundColor: STATUS_COLORS[status].bg }]}>
+                                                        <Ionicons
+                                                            name={STATUS_COLORS[status].icon as any}
+                                                            size={18}
+                                                            color={STATUS_COLORS[status].text}
+                                                        />
+                                                    </View>
+                                                    <Text
+                                                        style={[
+                                                            styles.statusOptionText,
+                                                            isActive && styles.statusOptionTextActive
+                                                        ]}
+                                                    >
+                                                        {getStatusLabel(status)}
+                                                    </Text>
+                                                </View>
+                                                {isActive && (
+                                                    <View style={styles.checkmarkContainer}>
+                                                        <Ionicons name="checkmark-circle" size={24} color="#DC2626" />
+                                                    </View>
+                                                )}
+                                            </TouchableOpacity>
+                                        );
+                                    })}
                                 </View>
                             </View>
 
@@ -673,41 +801,21 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: 16,
-        paddingVertical: 16,
+        paddingVertical: 12,
         backgroundColor: "#FFF",
         borderBottomWidth: 1,
         borderBottomColor: "#E5E7EB",
     },
+    backButton: {
+        width: 40,
+        height: 40,
+        justifyContent: "center",
+        alignItems: "center",
+    },
     headerTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: "bold",
         color: "#1F2937",
-    },
-    headerSubtitle: {
-        fontSize: 13,
-        color: "#6B7280",
-        marginTop: 2,
-    },
-    headerRight: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    refreshButton: {
-        width: 44,
-        height: 44,
-        justifyContent: "center",
-        alignItems: "center",
-        borderRadius: 22,
-        backgroundColor: "#F3F4F6",
-    },
-    logoutButton: {
-        width: 44,
-        height: 44,
-        justifyContent: "center",
-        alignItems: "center",
-        borderRadius: 22,
-        backgroundColor: "#FEE2E2",
     },
     loadingContainer: {
         flex: 1,
@@ -719,68 +827,127 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#6B7280",
     },
+    filterContainer: {
+        backgroundColor: "#FFF",
+        borderBottomWidth: 1,
+        borderBottomColor: "#E5E7EB",
+    },
+    filterList: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 8,
+    },
+    filterButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: "#F3F4F6",
+        marginRight: 8,
+        gap: 6,
+    },
+    filterButtonActive: {
+        backgroundColor: "#047857",
+    },
+    filterButtonText: {
+        fontSize: 13,
+        fontWeight: "600",
+        color: "#6B7280",
+    },
+    filterButtonTextActive: {
+        color: "#FFF",
+    },
+    filterBadge: {
+        backgroundColor: "#E5E7EB",
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 10,
+        minWidth: 20,
+        alignItems: "center",
+    },
+    filterBadgeActive: {
+        backgroundColor: "rgba(255, 255, 255, 0.3)",
+    },
+    filterBadgeText: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: "#374151",
+    },
+    filterBadgeTextActive: {
+        color: "#FFF",
+    },
     listContainer: {
         padding: 16,
-        paddingBottom: 20,
     },
     statsContainer: {
-        marginBottom: 20,
+        flexDirection: "row",
+        gap: 12,
+        marginBottom: 16,
     },
     statCard: {
         backgroundColor: "#FFF",
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
+        borderRadius: 12,
+        padding: 16,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
         elevation: 2,
     },
-    statCardTop: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        marginBottom: 12,
+    statCardLarge: {
+        flex: 1,
+        gap: 8,
     },
-    statBadgeText: {
-        fontSize: 14,
-        fontWeight: "600",
-        color: "#6B7280",
-    },
-    statAmount: {
-        fontSize: 32,
-        fontWeight: "bold",
-        color: "#047857",
-        marginBottom: 4,
-    },
-    statLabel: {
-        fontSize: 13,
-        color: "#9CA3AF",
-    },
-    statsGrid: {
+    statCardHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
+        alignItems: "flex-start",
+    },
+    statBadge: {
+        backgroundColor: "#F0FDF4",
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    statBadgeText: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: "#047857",
+    },
+    statAmount: {
+        fontSize: 24,
+        fontWeight: "bold",
+        color: "#047857",
+    },
+    statLabel: {
+        fontSize: 12,
+        color: "#6B7280",
+    },
+    statColumn: {
         gap: 12,
     },
-    statBox: {
-        flex: 1,
-        backgroundColor: "#F9FAFB",
+    statCardSmall: {
+        backgroundColor: "#FFF",
         borderRadius: 12,
         padding: 12,
         alignItems: "center",
-        justifyContent: "center",
+        gap: 6,
+        width: 100,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    statNumber: {
-        fontSize: 24,
+    statNumberSmall: {
+        fontSize: 20,
         fontWeight: "bold",
         color: "#1F2937",
-        marginTop: 8,
     },
-    statSmallLabel: {
+    statLabelSmall: {
         fontSize: 11,
         color: "#6B7280",
-        marginTop: 4,
         textAlign: "center",
     },
     orderCard: {
@@ -941,32 +1108,34 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-    },
-    totalContainer: {
-        flexDirection: "row",
-        alignItems: "center",
+        flexWrap: "wrap",
         gap: 8,
     },
+    totalContainer: {
+        flexDirection: "column",
+        flex: 1,
+        minWidth: 100,
+    },
     totalLabel: {
-        fontSize: 13,
+        fontSize: 12,
         color: "#6B7280",
     },
     totalValue: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: "bold",
         color: "#047857",
     },
     detailButton: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 4,
+        gap: 2,
         backgroundColor: "#F0FDF4",
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 6,
     },
     detailButtonText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: "600",
         color: "#047857",
     },
@@ -998,19 +1167,20 @@ const styles = StyleSheet.create({
     },
     footerButtons: {
         flexDirection: "row",
-        gap: 8,
+        gap: 6,
+        flexShrink: 0,
     },
     updateButton: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 4,
+        gap: 2,
         backgroundColor: "#047857",
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 6,
     },
     updateButtonText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: "600",
         color: "#FFF",
     },
@@ -1075,26 +1245,52 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     statusOptions: {
-        gap: 8,
+        gap: 10,
     },
     statusOption: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
-        padding: 12,
+        justifyContent: "space-between",
+        padding: 14,
         borderRadius: 12,
         borderWidth: 2,
         borderColor: "#E5E7EB",
-        backgroundColor: "#FFF",
+        backgroundColor: "#FFFFFF",
     },
     statusOptionActive: {
-        backgroundColor: "#F9FAFB",
+        backgroundColor: "#FEF2F2",
+        borderColor: "#DC2626",
         borderWidth: 2,
+        shadowColor: "#DC2626",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    statusOptionLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        flex: 1,
+    },
+    statusIconContainer: {
+        width: 36,
+        height: 36,
+        borderRadius: 8,
+        justifyContent: "center",
+        alignItems: "center",
     },
     statusOptionText: {
         fontSize: 14,
         fontWeight: "600",
-        color: "#6B7280",
+        color: "#374151",
+    },
+    statusOptionTextActive: {
+        color: "#DC2626",
+        fontWeight: "700",
+    },
+    checkmarkContainer: {
+        marginLeft: 8,
     },
     textInput: {
         borderWidth: 1,

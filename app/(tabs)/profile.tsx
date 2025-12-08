@@ -105,9 +105,6 @@ export default function ProfileScreen() {
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <Ionicons name="person-circle" size={100} color="#047857" />
-            <TouchableOpacity style={styles.cameraButton}>
-              <Ionicons name="camera" size={20} color="#FFF" />
-            </TouchableOpacity>
           </View>
 
           <Text style={styles.userName}>{user.name || "Người dùng"}</Text>
@@ -136,11 +133,6 @@ export default function ProfileScreen() {
               </Text>
             </View>
           )}
-
-          <TouchableOpacity style={styles.editButton}>
-            <Ionicons name="create-outline" size={18} color="#047857" />
-            <Text style={styles.editButtonText}>Chỉnh sửa hồ sơ</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -167,22 +159,6 @@ export default function ProfileScreen() {
                 router.push("/orders/all-orders");
               }}
             />
-            <MenuItem
-              icon="time-outline"
-              title="Đang xử lý"
-              subtitle="2 đơn hàng"
-              onPress={() => {
-                router.push("/orders/process-orders");
-              }}
-            />
-            <MenuItem
-              icon="checkmark-circle-outline"
-              title="Đã giao"
-              subtitle="10 đơn hàng"
-              onPress={() => {
-                router.push("/orders/delivered-orders");
-              }}
-            />
           </View>
         </View>
         <View style={styles.section}>
@@ -202,60 +178,12 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Tài khoản</Text>
           <View style={styles.menuSection}>
             <MenuItem
-              icon="heart-outline"
-              title="Yêu thích"
-              subtitle="5 sản phẩm"
-              onPress={() => { }}
-            />
-            <MenuItem
               icon="pricetag-outline"
               title="Mã giảm giá"
               subtitle="Vouchers của tôi"
               onPress={() => {
                 router.push("/(screen)/vouchers");
               }}
-            />
-            <MenuItem
-              icon="location-outline"
-              title="Địa chỉ giao hàng"
-              subtitle="Quản lý địa chỉ"
-              onPress={() => { }}
-            />
-            <MenuItem
-              icon="card-outline"
-              title="Phương thức thanh toán"
-              subtitle="Thẻ & Ví điện tử"
-              onPress={() => { }}
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Khác</Text>
-          <View style={styles.menuSection}>
-            <MenuItem
-              icon="notifications-outline"
-              title="Thông báo"
-              subtitle="Cài đặt thông báo"
-              onPress={() => { }}
-            />
-            <MenuItem
-              icon="settings-outline"
-              title="Cài đặt"
-              subtitle="Cài đặt ứng dụng"
-              onPress={() => { }}
-            />
-            <MenuItem
-              icon="help-circle-outline"
-              title="Trợ giúp & Hỗ trợ"
-              subtitle="Câu hỏi thường gặp"
-              onPress={() => { }}
-            />
-            <MenuItem
-              icon="information-circle-outline"
-              title="Về chúng tôi"
-              subtitle="FlowerPlus.vn"
-              onPress={() => { }}
             />
           </View>
         </View>
