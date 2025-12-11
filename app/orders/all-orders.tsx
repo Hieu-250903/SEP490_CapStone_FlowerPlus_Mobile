@@ -335,10 +335,12 @@ const AllOrder = () => {
         <View style={styles.divider} />
 
         <View style={styles.orderFooter}>
-          <View style={styles.totalContainer}>
-            <Text style={styles.totalLabel}>Tổng tiền:</Text>
-            <Text style={styles.totalAmount}>{formatVND(order.total)}</Text>
-          </View>
+          {order.discountAmount > 0 && (
+            <View style={styles.totalContainer}>
+              <Text style={styles.totalLabel}>Tổng tiền:</Text>
+              <Text style={styles.discountAmount}>{formatVND(order.discountAmount)}</Text>
+            </View>
+          )}
         </View>
       </View>
     );

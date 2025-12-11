@@ -58,6 +58,20 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
+        name="(screen)/user-info"
+        options={{
+          title: "Thông tin cá nhân",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="(screen)/chatbot"
+        options={{
+          title: "Trợ lý ảo",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="(screen)/shipper"
         options={{
           title: "Lịch sử thanh toán",
@@ -68,20 +82,6 @@ export default function RootLayout() {
         name="orders/all-orders"
         options={{
           title: "Tất cả đơn hàng",
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="orders/process-orders"
-        options={{
-          title: "Đơn hàng đang sử lí",
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="orders/delivered-orders"
-        options={{
-          title: "Đơn hàng đang đã giao",
           headerShown: false,
         }}
       />

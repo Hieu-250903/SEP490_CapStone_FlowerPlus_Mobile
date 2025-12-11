@@ -139,6 +139,26 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Cá nhân hóa</Text>
           <View style={styles.menuSection}>
             <MenuItem
+              icon="person"
+              title="Thông tin cá nhân"
+              subtitle="Thông tin cá nhân"
+              onPress={() => {
+                router.push("/(screen)/user-info");
+              }}
+            />
+          </View>
+          <View style={styles.menuSection}>
+            <MenuItem
+              icon="chatbubbles"
+              title="Trợ lý ảo"
+              subtitle="Tư vấn và hỗ trợ"
+              onPress={() => {
+                router.push("/(screen)/chatbot");
+              }}
+            />
+          </View>
+          <View style={styles.menuSection}>
+            <MenuItem
               icon="flower"
               title="Hoa custom"
               subtitle="Hoa custom"
@@ -372,6 +392,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: "#E5E7EB",
+    marginBottom: 4,
   },
   menuItem: {
     flexDirection: "row",

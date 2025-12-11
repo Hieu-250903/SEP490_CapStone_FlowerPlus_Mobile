@@ -1,4 +1,4 @@
-import UploadImageRN from "@/components/UploadImageRN";
+
 import { userProfileApi } from "@/services/auth";
 import { checkoutProduct } from "@/services/order";
 import {
@@ -39,7 +39,7 @@ export default function ProductCustomImprovedUI() {
   const [form, setForm] = useState({
     name: "",
     description: "",
-    imageUrls: [] as string[],
+
     flowerSelections: [] as {
       childId: number;
       name: string;
@@ -124,7 +124,7 @@ export default function ProductCustomImprovedUI() {
   const fetchAddresses = async () => {
     try {
       const res = await userProfileApi();
-      console.log("res",res);
+      console.log("res", res);
       if (res?.data) {
         setAddresses(res.data.deliveryAddresses || []);
       }
@@ -159,12 +159,7 @@ export default function ProductCustomImprovedUI() {
     }
   };
 
-  const handleImageUrlsChange = useCallback((urls: string | string[]) => {
-    setForm((s) => ({
-      ...s,
-      imageUrls: Array.isArray(urls) ? urls : [urls],
-    }));
-  }, []);
+
 
   const handleQuantityChange = (
     type: "flower" | "item",
@@ -213,15 +208,7 @@ export default function ProductCustomImprovedUI() {
     setLoading(true);
 
     try {
-      let uploadedImageUrls: string[] = [];
-      if (form.imageUrls.length > 0) {
-        try {
-          const uploadResults = await uploadImages(form.imageUrls);
-          uploadedImageUrls = uploadResults.map((result: any) => result.url || result);
-        } catch (uploadError) {
-          console.error("Error uploading images:", uploadError);
-        }
-      }
+
 
       const compositions = [
         ...form.flowerSelections.map((f) => ({
@@ -252,7 +239,7 @@ export default function ProductCustomImprovedUI() {
       const response = await createCustomProduct({
         name: form.name,
         description: form.description,
-        images: uploadedImageUrls,
+        images: [],
         compositions,
       });
 
@@ -268,7 +255,7 @@ export default function ProductCustomImprovedUI() {
       console.error("Error creating product:", error);
       setError(
         error?.response?.data?.message ||
-          "Không thể tạo sản phẩm. Vui lòng thử lại!"
+        "Không thể tạo sản phẩm. Vui lòng thử lại!"
       );
     } finally {
       setLoading(false);
@@ -313,14 +300,14 @@ export default function ProductCustomImprovedUI() {
       }
 
       const response = await checkoutProduct({
-        cancelUrl:"",
-        note:orderForm.note,
-        productId:product.id,
-        quantity:orderForm.quantity,
-        recipientName:"",
-        requestDeliveryTime:"",
-        shippingAddress:orderForm.shippingAddress,
-        userId:addresses.find((address) => address.id === selectedAddressId)?.userId,
+        cancelUrl: "",
+        note: orderForm.note,
+        productId: product.id,
+        quantity: orderForm.quantity,
+        recipientName: "",
+        requestDeliveryTime: "",
+        shippingAddress: orderForm.shippingAddress,
+        userId: addresses.find((address) => address.id === selectedAddressId)?.userId,
       });
       if (response) {
         Alert.alert(
@@ -338,7 +325,7 @@ export default function ProductCustomImprovedUI() {
                 setForm({
                   name: "",
                   description: "",
-                  imageUrls: [],
+
                   flowerSelections: [],
                   itemSelections: [],
                 });
@@ -357,7 +344,7 @@ export default function ProductCustomImprovedUI() {
       console.error("Error creating order:", error);
       setError(
         error?.response?.data?.message ||
-          "Không thể đặt hàng. Vui lòng thử lại!"
+        "Không thể đặt hàng. Vui lòng thử lại!"
       );
     } finally {
       setLoading(false);
@@ -755,18 +742,7 @@ export default function ProductCustomImprovedUI() {
             </View>
 
             {/* Image Upload */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Ảnh mẫu sản phẩm mong muốn</Text>
-              <Text style={styles.helperText}>
-                Upload ảnh mẫu để chúng tôi hiểu rõ hơn về yêu cầu của bạn
-              </Text>
-              <UploadImageRN
-                multiple
-                maxFiles={8}
-                onChange={handleImageUrlsChange}
-                defaultValue={form.imageUrls}
-              />
-            </View>
+
 
             {/* Error Message */}
             {error && (

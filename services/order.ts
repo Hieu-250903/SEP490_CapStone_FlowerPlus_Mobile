@@ -105,7 +105,7 @@ export const getListOrdersByShipper = async () => {
 export const updateOrderStatus = async (orderId: number, formData: {
   step: string,
   note: string,
-  location: string,
+  location?: string,
   imageUrl: string
 }) => {
   try {

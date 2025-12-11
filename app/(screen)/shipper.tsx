@@ -30,6 +30,11 @@ interface OrderItem {
     lineTotal: number;
 }
 
+interface Transaction {
+    status: string;
+    amount: number;
+}
+
 interface DeliveryStatus {
     id: number;
     step: string;
@@ -63,6 +68,7 @@ interface Order {
     user: User;
     items: OrderItem[];
     deliveryStatuses: DeliveryStatus[];
+    transaction?: Transaction;
 }
 
 type FilterStatus = "ALL" | "PENDING_CONFIRMATION" | "PREPARING" | "DELIVERING" | "DELIVERED" | "DELIVERY_FAILED";
@@ -100,7 +106,7 @@ const ShipperScreen = () => {
     const [updateFormData, setUpdateFormData] = useState({
         step: "",
         note: "",
-        location: "",
+
         imageUrl: "",
     });
     const [submitting, setSubmitting] = useState(false);
@@ -146,7 +152,7 @@ const ShipperScreen = () => {
         } else {
             setFilteredOrders(
                 orders.filter((order) => {
-                    const latestStatus = getLatestStatus(order.deliveryStatuses);
+                    const latestStatus = getLatestStatus(order.deliveryStatuses, order.transaction);
                     return latestStatus === selectedStatus;
                 })
             );
@@ -180,8 +186,11 @@ const ShipperScreen = () => {
         }
     };
 
-    const getLatestStatus = (deliveryStatuses: DeliveryStatus[]) => {
+    const getLatestStatus = (deliveryStatuses: DeliveryStatus[], transaction?: Transaction) => {
         if (!deliveryStatuses || deliveryStatuses.length === 0) {
+            if (transaction?.status === 'CANCELLED' || transaction?.status === 'FAILED') {
+                return "DELIVERY_FAILED";
+            }
             return "PENDING_CONFIRMATION";
         }
         return deliveryStatuses[deliveryStatuses.length - 1].step;
@@ -218,11 +227,11 @@ const ShipperScreen = () => {
 
     const handleOpenUpdateModal = (order: Order) => {
         setSelectedOrder(order);
-        const currentStatus = getLatestStatus(order.deliveryStatuses);
+        const currentStatus = getLatestStatus(order.deliveryStatuses, order.transaction);
         setUpdateFormData({
             step: currentStatus,
             note: "",
-            location: "",
+
             imageUrl: "",
         });
         setUpdateModalVisible(true);
@@ -234,7 +243,7 @@ const ShipperScreen = () => {
         setUpdateFormData({
             step: "",
             note: "",
-            location: "",
+
             imageUrl: "",
         });
     };
@@ -272,35 +281,35 @@ const ShipperScreen = () => {
                     key: "PENDING_CONFIRMATION",
                     label: "Chờ xác nhận",
                     count: orders.filter(
-                        (o) => getLatestStatus(o.deliveryStatuses) === "PENDING_CONFIRMATION"
+                        (o) => getLatestStatus(o.deliveryStatuses, o.transaction) === "PENDING_CONFIRMATION"
                     ).length,
                 },
                 {
                     key: "PREPARING",
                     label: "Đang chuẩn bị",
                     count: orders.filter(
-                        (o) => getLatestStatus(o.deliveryStatuses) === "PREPARING"
+                        (o) => getLatestStatus(o.deliveryStatuses, o.transaction) === "PREPARING"
                     ).length,
                 },
                 {
                     key: "DELIVERING",
                     label: "Đang giao",
                     count: orders.filter(
-                        (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERING"
+                        (o) => getLatestStatus(o.deliveryStatuses, o.transaction) === "DELIVERING"
                     ).length,
                 },
                 {
                     key: "DELIVERED",
                     label: "Hoàn thành",
                     count: orders.filter(
-                        (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERED"
+                        (o) => getLatestStatus(o.deliveryStatuses, o.transaction) === "DELIVERED"
                     ).length,
                 },
                 {
                     key: "DELIVERY_FAILED",
                     label: "Thất bại",
                     count: orders.filter(
-                        (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERY_FAILED"
+                        (o) => getLatestStatus(o.deliveryStatuses, o.transaction) === "DELIVERY_FAILED"
                     ).length,
                 },
             ];
@@ -355,7 +364,7 @@ const ShipperScreen = () => {
     };
 
     const renderOrderCard = ({ item: order }: { item: Order }) => {
-        const latestStatus = getLatestStatus(order.deliveryStatuses);
+        const latestStatus = getLatestStatus(order.deliveryStatuses, order.transaction);
         const statusStyle = getStatusStyle(latestStatus);
         const deliveryAddress = order.user.deliveryAddresses?.[0];
 
@@ -536,10 +545,10 @@ const ShipperScreen = () => {
             0
         );
         const deliveringCount = orders.filter(
-            (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERING"
+            (o) => getLatestStatus(o.deliveryStatuses, o.transaction) === "DELIVERING"
         ).length;
         const deliveredCount = orders.filter(
-            (o) => getLatestStatus(o.deliveryStatuses) === "DELIVERED"
+            (o) => getLatestStatus(o.deliveryStatuses, o.transaction) === "DELIVERED"
         ).length;
 
         return (
@@ -685,59 +694,67 @@ const ShipperScreen = () => {
                             )}
 
                             {/* Status Dropdown */}
-                            <View style={styles.formGroup}>
-                                <Text style={styles.formLabel}>Trạng thái giao hàng *</Text>
-                                <View style={styles.statusOptions}>
-                                    {Object.keys(STATUS_COLORS).map((status) => {
-                                        const isActive = updateFormData.step === status;
-                                        return (
-                                            <TouchableOpacity
-                                                key={status}
-                                                style={[
-                                                    styles.statusOption,
-                                                    isActive && styles.statusOptionActive,
-                                                ]}
-                                                onPress={() => setUpdateFormData({ ...updateFormData, step: status })}
-                                            >
-                                                <View style={styles.statusOptionLeft}>
-                                                    <View style={[styles.statusIconContainer, { backgroundColor: STATUS_COLORS[status].bg }]}>
-                                                        <Ionicons
-                                                            name={STATUS_COLORS[status].icon as any}
-                                                            size={18}
-                                                            color={STATUS_COLORS[status].text}
-                                                        />
-                                                    </View>
-                                                    <Text
-                                                        style={[
-                                                            styles.statusOptionText,
-                                                            isActive && styles.statusOptionTextActive
-                                                        ]}
-                                                    >
-                                                        {getStatusLabel(status)}
-                                                    </Text>
-                                                </View>
-                                                {isActive && (
-                                                    <View style={styles.checkmarkContainer}>
-                                                        <Ionicons name="checkmark-circle" size={24} color="#DC2626" />
-                                                    </View>
-                                                )}
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            </View>
+                            {(() => {
+                                const currentStatus = getLatestStatus(selectedOrder?.deliveryStatuses || [], selectedOrder?.transaction);
+                                const isLocked = selectedOrder?.transaction?.status === 'CANCELLED' ||
+                                    selectedOrder?.transaction?.status === 'FAILED' ||
+                                    currentStatus === 'DELIVERY_FAILED' ||
+                                    currentStatus === 'DELIVERED';
 
-                            {/* Location Input */}
-                            <View style={styles.formGroup}>
-                                <Text style={styles.formLabel}>Vị trí hiện tại</Text>
-                                <TextInput
-                                    style={styles.textInput}
-                                    placeholder="Nhập vị trí hiện tại..."
-                                    value={updateFormData.location}
-                                    onChangeText={(text) => setUpdateFormData({ ...updateFormData, location: text })}
-                                    multiline
-                                />
-                            </View>
+                                return !isLocked ? (
+                                    <View style={styles.formGroup}>
+                                        <Text style={styles.formLabel}>Trạng thái giao hàng *</Text>
+                                        <View style={styles.statusOptions}>
+                                            {Object.keys(STATUS_COLORS).map((status) => {
+                                                const isActive = updateFormData.step === status;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={status}
+                                                        style={[
+                                                            styles.statusOption,
+                                                            isActive && styles.statusOptionActive,
+                                                        ]}
+                                                        onPress={() => setUpdateFormData({ ...updateFormData, step: status })}
+                                                    >
+                                                        <View style={styles.statusOptionLeft}>
+                                                            <View style={[styles.statusIconContainer, { backgroundColor: STATUS_COLORS[status].bg }]}>
+                                                                <Ionicons
+                                                                    name={STATUS_COLORS[status].icon as any}
+                                                                    size={18}
+                                                                    color={STATUS_COLORS[status].text}
+                                                                />
+                                                            </View>
+                                                            <Text
+                                                                style={[
+                                                                    styles.statusOptionText,
+                                                                    isActive && styles.statusOptionTextActive
+                                                                ]}
+                                                            >
+                                                                {getStatusLabel(status)}
+                                                            </Text>
+                                                        </View>
+                                                        {isActive && (
+                                                            <View style={styles.checkmarkContainer}>
+                                                                <Ionicons name="checkmark-circle" size={24} color="#DC2626" />
+                                                            </View>
+                                                        )}
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={styles.formGroup}>
+                                        <Text style={[styles.formLabel, { color: '#DC2626' }]}>
+                                            {currentStatus === 'DELIVERED'
+                                                ? "Đơn hàng đã giao thành công. Không thể cập nhật trạng thái."
+                                                : "Đơn hàng đã bị hủy, giao thất bại hoặc thanh toán thất bại. Không thể cập nhật trạng thái."}
+                                        </Text>
+                                    </View>
+                                );
+                            })()}
+
+
 
                             {/* Note Input */}
                             <View style={styles.formGroup}>
@@ -773,9 +790,24 @@ const ShipperScreen = () => {
                                 <Text style={styles.cancelButtonText}>Hủy</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+                                style={[styles.submitButton, (() => {
+                                    const currentStatus = getLatestStatus(selectedOrder?.deliveryStatuses || [], selectedOrder?.transaction);
+                                    const isLocked = submitting ||
+                                        selectedOrder?.transaction?.status === 'CANCELLED' ||
+                                        selectedOrder?.transaction?.status === 'FAILED' ||
+                                        currentStatus === 'DELIVERY_FAILED' ||
+                                        currentStatus === 'DELIVERED';
+                                    return isLocked;
+                                })() && styles.submitButtonDisabled]}
                                 onPress={handleSubmitUpdate}
-                                disabled={submitting}
+                                disabled={(() => {
+                                    const currentStatus = getLatestStatus(selectedOrder?.deliveryStatuses || [], selectedOrder?.transaction);
+                                    return submitting ||
+                                        selectedOrder?.transaction?.status === 'CANCELLED' ||
+                                        selectedOrder?.transaction?.status === 'FAILED' ||
+                                        currentStatus === 'DELIVERY_FAILED' ||
+                                        currentStatus === 'DELIVERED';
+                                })()}
                             >
                                 {submitting ? (
                                     <ActivityIndicator color="#FFF" size="small" />

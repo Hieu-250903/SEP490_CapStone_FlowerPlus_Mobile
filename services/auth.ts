@@ -14,7 +14,14 @@ export const userRegisterApi = async (userData: RegisterData) => {
     throw error;
   }
 };
-
+export const getUserInfoApi = async () => {
+  try {
+    const response = await instance.get("/auth/me");
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
 export const userLoginApi = async (credentials: {
   email: string;
   password: string;

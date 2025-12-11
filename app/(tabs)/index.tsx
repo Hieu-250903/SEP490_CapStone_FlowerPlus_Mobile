@@ -301,17 +301,6 @@ export default function HomeScreen() {
               ))}
             </View>
           </View>
-
-          <View style={styles.lovedBySection}>
-            <Text style={styles.lovedByTitle}>ĐƯỢC YÊU THÍCH BỞI</Text>
-            <View style={styles.brandsContainer}>
-              {brands.map((brand, index) => (
-                <Text key={index} style={styles.brandText}>
-                  {brand}
-                </Text>
-              ))}
-            </View>
-          </View>
         </View>
 
         {/* Dynamic Category Sections */}
