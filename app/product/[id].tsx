@@ -53,12 +53,13 @@ export default function ProductDetailScreen() {
   }, [id]);
 
   const handleAddToCart = async () => {
+    if (!product) return;
     try {
       const response = await addToCart({
         productId: product.id,
         quantity: 1,
       });
-      if (response?.success) {
+      if (response?.data?.success) {
         Alert.alert("Thành công", "Đã thêm sản phẩm vào giỏ hàng", [
           { text: "OK" },
         ]);
@@ -104,13 +105,13 @@ export default function ProductDetailScreen() {
     );
   }
 
-  const productImages = product.images ? JSON.parse(product.images) : [];
+  const productImages = (product as Product).images ? JSON.parse((product as Product).images) : [];
   const galleryImages = productImages.length > 0 ? productImages : [];
   const mainImage = galleryImages[0] || "https://via.placeholder.com/400";
 
-  const categoryName = product.categories?.[0]?.name || "Chưa phân loại";
+  const categoryName = (product as Product).categories?.[0]?.name || "Chưa phân loại";
 
-  const isInStock = product.stock > 0;
+  const isInStock = (product as Product).stock > 0;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -186,7 +187,7 @@ export default function ProductDetailScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.thumbnails}
             >
-              {galleryImages.map((img, idx) => (
+              {galleryImages.map((img: string, idx: number) => (
                 <TouchableOpacity key={idx} style={styles.thumbnail}>
                   <Image source={{ uri: img }} style={styles.thumbnailImage} />
                 </TouchableOpacity>
@@ -204,7 +205,7 @@ export default function ProductDetailScreen() {
             <Text style={styles.breadcrumbText}>Chi tiết</Text>
           </View>
 
-          <Text style={styles.productTitle}>{product.name}</Text>
+          <Text style={styles.productTitle}>{(product as Product).name}</Text>
 
           <View style={styles.badges}>
             <View style={styles.newBadge}>
@@ -214,7 +215,7 @@ export default function ProductDetailScreen() {
               <View style={styles.stockBadge}>
                 <Ionicons name="checkmark-circle" size={14} color="#059669" />
                 <Text style={styles.stockBadgeText}>
-                  Còn hàng ({product.stock})
+                  Còn hàng ({(product as Product).stock})
                 </Text>
               </View>
             ) : (
@@ -228,7 +229,7 @@ export default function ProductDetailScreen() {
           </View>
 
           <View style={styles.priceCard}>
-            <Text style={styles.currentPrice}>{formatVND(product.price)}</Text>
+            <Text style={styles.currentPrice}>{formatVND((product as Product).price)}</Text>
             <Text style={styles.priceNote}>
               Giá đã bao gồm giấy gói & thiệp viết tay theo yêu cầu
             </Text>
@@ -260,10 +261,10 @@ export default function ProductDetailScreen() {
           </View>
 
           {/* Product Composition */}
-          {product.compositions && product.compositions.length > 0 && (
+          {(product as Product).compositions && (product as Product).compositions.length > 0 && (
             <View style={styles.compositionCard}>
               <Text style={styles.compositionTitle}>Thành phần sản phẩm</Text>
-              {product.compositions.map((item, index) => {
+              {(product as Product).compositions.map((item: any, index: number) => {
                 const itemImages = item.childImage
                   ? JSON.parse(item.childImage)
                   : [];

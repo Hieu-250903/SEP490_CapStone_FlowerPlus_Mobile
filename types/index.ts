@@ -3,12 +3,18 @@ export interface Product {
   name: string;
   originalPrice: number;
   discountedPrice: number;
+  discountPrice?: number; // alias
+  price?: number; // alias
   discount: number;
   label?: string | null;
   labelColor?: string;
   image: string;
+  images?: string;
   description?: string;
   category?: string;
+  stock?: number;
+  compositions?: any[];
+  categories?: Category[];
 }
 
 export interface Category {

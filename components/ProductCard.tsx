@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Product } from "../../types";
+import { Product } from "../types";
 
 interface ProductCardProps {
   product: Product;

@@ -38,6 +38,7 @@ interface Transaction {
 interface Order {
   orderCode: string;
   total: number;
+  discountAmount: number;
   items: OrderItem[];
   user: {
     firstName: string;
