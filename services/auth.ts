@@ -1,5 +1,5 @@
 import instance from "@/config/instance";
-import { LoginResponse, RegisterData, UserData } from "@/types";
+import { LoginResponse, RegisterData } from "@/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
 
@@ -43,7 +43,7 @@ export const userLoginApi = async (credentials: {
       username: credentials.email,
       password: credentials.password,
     });
-    return response.data;
+    return response;
   } catch (error) {
     throw error;
   }

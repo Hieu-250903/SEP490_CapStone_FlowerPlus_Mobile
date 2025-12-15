@@ -54,7 +54,7 @@ export default function CheckoutScreen() {
   useEffect(() => {
     const fetchAddresses = async () => {
       const res = await userProfileApi();
-      if (res.data?.success) {
+      if (res.success) {
         setAddressList(res.data.deliveryAddresses || []);
         const defaultAddress = res.data.deliveryAddresses.find(
           (addr: addressDelivery) => addr.default
@@ -126,12 +126,12 @@ export default function CheckoutScreen() {
         cancelUrl: "http://localhost:3000/checkout/cancel",
         returnUrl: "http://localhost:3000/checkout/success",
         note: note,
-        phoneNumber: selectedAddress.phoneNumber.toString(),
+        phoneNumber: selectedAddress.phoneNumber,
         recipientName: selectedAddress.recipientName,
         shippingAddress: `${selectedAddress.address}, ${selectedAddress.ward}, ${selectedAddress.district}, ${selectedAddress.province}`,
-        requestDeliveryTime: deliveryDate ? deliveryDate.toISOString() : undefined,
+        requestDeliveryTime: deliveryDate ? deliveryDate.toISOString() : null,
         userId: selectedAddress.userId,
-        voucherCode: selectedVoucher?.code || undefined,
+        voucherCode: selectedVoucher?.code || null,
       });
 
       if (response) {
@@ -256,7 +256,7 @@ export default function CheckoutScreen() {
       if (voucher.minOrderValue && total < voucher.minOrderValue) return false;
 
       if (!voucher.applyAllProducts) {
-        const hasApplicableProduct = productIds.some((id: number) =>
+        const hasApplicableProduct = productIds.some((id) =>
           voucher.productIds.includes(id)
         );
         if (!hasApplicableProduct) return false;

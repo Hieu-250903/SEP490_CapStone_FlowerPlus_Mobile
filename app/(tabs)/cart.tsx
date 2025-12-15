@@ -1,11 +1,11 @@
 import { authService } from "@/services/auth";
 import {
+  CartItem,
   clearCart,
   getCart,
   removeCartItem,
   updateCartItem,
 } from "@/services/cart";
-import { CartItem } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -87,12 +87,12 @@ export default function CartScreen() {
 
       const response = await getCart();
       if (response?.data) {
-        const items: CartItem[] = response.data?.items || [];
+        const items = response.data.items || [];
         setCartItems(items);
-        setTotalPrice(response.data?.totalPrice || 0);
+        setTotalPrice(response.data.totalPrice || 0);
 
         if (items.length > 0) {
-          const allIds = new Set(items.map((item) => item.id));
+          const allIds = new Set(items.map((item: CartItem) => item.id));
           setSelectedItems(allIds);
         } else {
           setSelectedItems(new Set());
@@ -179,7 +179,7 @@ export default function CartScreen() {
         quantity: newQuantity,
       });
 
-      if (response?.data?.success) {
+      if (response?.success) {
         await fetchCart(true);
       }
     } catch (error) {
@@ -212,7 +212,7 @@ export default function CartScreen() {
             try {
               const response = await removeCartItem(userId, itemId);
 
-              if (response?.data?.success) {
+              if (response?.success) {
                 setSelectedItems((prev) => {
                   const next = new Set(prev);
                   next.delete(itemId);
@@ -290,7 +290,7 @@ export default function CartScreen() {
           try {
             const response = await clearCart(userId);
 
-            if (response?.data?.success) {
+            if (response?.success) {
               setSelectedItems(new Set());
               setCartItems([]);
               setTotalPrice(0);

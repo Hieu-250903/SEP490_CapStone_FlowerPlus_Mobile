@@ -49,13 +49,13 @@ export default function VerifyEmailScreen() {
                 verificationCode: verificationCode,
             });
 
-            if (res.data?.success) {
+            if (res.success) {
                 setSuccess(true);
                 setTimeout(() => {
                     router.replace("/(auth)/login");
                 }, 2000);
             } else {
-                Alert.alert("Lỗi", res.data?.message || "Xác thực không thành công");
+                Alert.alert("Lỗi", res.message || "Xác thực không thành công");
             }
         } catch (error: any) {
             const errorMessage =

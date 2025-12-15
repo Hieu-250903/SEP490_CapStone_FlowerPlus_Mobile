@@ -94,7 +94,7 @@ export default function RegisterScreen() {
         address: address.trim(),
         age: age ? parseInt(age) : 0,
       });
-      if (res.data?.success) {
+      if (res.success) {
         Alert.alert(
           'Đăng ký thành công!',
           'Chúng tôi đã gửi mã xác thực 6 chữ số đến email của bạn. Vui lòng kiểm tra hộp thư và nhập mã để hoàn tất đăng ký.',
@@ -111,7 +111,7 @@ export default function RegisterScreen() {
           { cancelable: false }
         );
       } else {
-        Alert.alert('Lỗi', res.data?.message || 'Đăng ký thất bại');
+        Alert.alert('Lỗi', res.message || 'Đăng ký thất bại');
       }
     } catch (error: any) {
       const errorMessage =
