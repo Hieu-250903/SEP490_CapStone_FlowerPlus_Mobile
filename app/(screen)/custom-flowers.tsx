@@ -7,7 +7,6 @@ import {
 } from "@/services/product";
 import { Product } from "@/types";
 import { formatVND } from "@/utils/imageUtils";
-import UploadImageRN from "@/components/UploadImageRN";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -40,7 +39,7 @@ export default function ProductCustomImprovedUI() {
   const [form, setForm] = useState({
     name: "",
     description: "",
-    imageUrls: [] as string[],
+
     flowerSelections: [] as {
       childId: number;
       name: string;
@@ -160,13 +159,6 @@ export default function ProductCustomImprovedUI() {
     }
   };
 
-  const handleImageUrlsChange = (urls: string | string[]) => {
-    setForm((prev) => ({
-      ...prev,
-      imageUrls: Array.isArray(urls) ? urls : [urls],
-    }));
-  };
-
 
 
   const handleQuantityChange = (
@@ -247,7 +239,7 @@ export default function ProductCustomImprovedUI() {
       const response = await createCustomProduct({
         name: form.name,
         description: form.description,
-        images: form.imageUrls,
+        images: [],
         compositions,
       });
 
@@ -750,18 +742,7 @@ export default function ProductCustomImprovedUI() {
             </View>
 
             {/* Image Upload */}
-                 <View style={styles.inputGroup}>
-              <Text style={styles.label}>Ảnh mẫu sản phẩm mong muốn</Text>
-              <Text style={styles.helperText}>
-                Upload ảnh mẫu để chúng tôi hiểu rõ hơn về yêu cầu của bạn
-              </Text>
-              <UploadImageRN
-                multiple
-                maxFiles={8}
-                onChange={handleImageUrlsChange}
-                defaultValue={form.imageUrls}
-              />
-            </View>
+
 
             {/* Error Message */}
             {error && (

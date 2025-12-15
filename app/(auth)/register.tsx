@@ -94,23 +94,28 @@ export default function RegisterScreen() {
         address: address.trim(),
         age: age ? parseInt(age) : 0,
       });
-
       if (res.success) {
         Alert.alert(
-          'Thành công', 
-          res.message || 'Đăng ký tài khoản thành công!',
+          'Đăng ký thành công!',
+          'Chúng tôi đã gửi mã xác thực 6 chữ số đến email của bạn. Vui lòng kiểm tra hộp thư và nhập mã để hoàn tất đăng ký.',
           [
             {
-              text: 'Đăng nhập ngay',
-              onPress: () => router.replace('/(auth)/login'),
+              text: 'Xác thực ngay',
+              onPress: () =>
+                router.replace({
+                  pathname: '/(auth)/verify-email',
+                  params: { email: email.trim() },
+                }),
             },
-          ]
+          ],
+          { cancelable: false }
         );
       } else {
         Alert.alert('Lỗi', res.message || 'Đăng ký thất bại');
       }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
+      const errorMessage =
+        error.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
       Alert.alert('Lỗi', errorMessage);
     } finally {
       setIsLoading(false);
@@ -119,19 +124,19 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => step === 1 ? router.back() : setStep(1)}
             disabled={isLoading}
           >
             <Ionicons name="arrow-back" size={24} color="#047857" />
           </TouchableOpacity>
-          
+
           <View style={styles.stepIndicator}>
             <View style={[styles.stepDot, step >= 1 && styles.stepDotActive]} />
             <View style={[styles.stepLine, step >= 2 && styles.stepLineActive]} />
@@ -141,7 +146,7 @@ export default function RegisterScreen() {
           <View style={styles.headerPlaceholder} />
         </View>
 
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -208,7 +213,7 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.nextButton}
                 onPress={handleNext}
               >
@@ -238,10 +243,10 @@ export default function RegisterScreen() {
                     secureTextEntry={!showPassword}
                   />
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                    <Ionicons 
-                      name={showPassword ? "eye-outline" : "eye-off-outline"} 
-                      size={20} 
-                      color="#9CA3AF" 
+                    <Ionicons
+                      name={showPassword ? "eye-outline" : "eye-off-outline"}
+                      size={20}
+                      color="#9CA3AF"
                     />
                   </TouchableOpacity>
                 </View>
@@ -262,10 +267,10 @@ export default function RegisterScreen() {
                     secureTextEntry={!showConfirmPassword}
                   />
                   <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                    <Ionicons 
-                      name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} 
-                      size={20} 
-                      color="#9CA3AF" 
+                    <Ionicons
+                      name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
+                      size={20}
+                      color="#9CA3AF"
                     />
                   </TouchableOpacity>
                 </View>
@@ -279,7 +284,7 @@ export default function RegisterScreen() {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Giới tính</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.inputContainer}
                   onPress={() => setShowGenderModal(true)}
                 >
@@ -333,7 +338,7 @@ export default function RegisterScreen() {
                 </Text>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.registerButton}
                 onPress={handleRegister}
                 disabled={isLoading}
@@ -378,7 +383,7 @@ export default function RegisterScreen() {
                 <Ionicons name="close" size={24} color="#1F2937" />
               </TouchableOpacity>
             </View>
-            
+
             {genderOptions.map((option) => (
               <TouchableOpacity
                 key={option.value}

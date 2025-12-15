@@ -30,6 +30,13 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
+        name="(auth)/verify-email"
+        options={{
+          title: "Xác nhận tài khoản",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="(screen)/CheckoutScreen"
         options={{
           title: "Thanh toán",
