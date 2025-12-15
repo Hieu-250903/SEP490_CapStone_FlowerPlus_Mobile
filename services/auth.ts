@@ -14,6 +14,18 @@ export const userRegisterApi = async (userData: RegisterData) => {
     throw error;
   }
 };
+
+export const verifyEmailApi = async (data: {
+  email: string;
+  verificationCode: string;
+}) => {
+  try {
+    const response = await instance.post("/auth/verify-email", data);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
 export const getUserInfoApi = async () => {
   try {
     const response = await instance.get("/auth/me");
@@ -179,5 +191,6 @@ export default {
   userRegisterApi,
   userLoginApi,
   userProfileApi,
+  verifyEmailApi,
   authService,
 };
