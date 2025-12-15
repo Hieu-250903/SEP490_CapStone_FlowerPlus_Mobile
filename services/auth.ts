@@ -43,7 +43,7 @@ export const userLoginApi = async (credentials: {
       username: credentials.email,
       password: credentials.password,
     });
-    return response.data;
+    return response;
   } catch (error) {
     throw error;
   }
