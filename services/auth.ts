@@ -52,7 +52,16 @@ export const userLoginApi = async (credentials: {
       username: credentials.email,
       password: credentials.password,
     });
-    return response.data as LoginResponse;
+    // Backend trả về dạng { accessToken: string }
+    const data = response.data as { accessToken: string };
+
+    const result: LoginResponse = {
+      success: !!data?.accessToken,
+      message: data?.accessToken ? "Đăng nhập thành công" : "Đăng nhập thất bại",
+      data: data?.accessToken ? { accessToken: data.accessToken } : undefined,
+    };
+
+    return result;
   } catch (error) {
     throw error;
   }

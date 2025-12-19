@@ -29,18 +29,24 @@ export default function LoginScreen() {
       return;
     }
 
+    console.log("[Login] Start login with email:", email.trim());
+
     setIsLoading(true);
     try {
       const res = await userLoginApi({
         email: email.trim(),
         password: password,
       });
+      console.log("[Login] API response:", res);
+
       if (res.success && res.data) {
         await authService.saveAuth(res.data.accessToken);
         const decodeData = await authService.decodeToken(
           res.data.accessToken
         );
-        if (decodeData.role === "DELIVERY_PERSON") {
+        console.log("[Login] Decoded token:", decodeData);
+
+        if (decodeData && decodeData.role === "DELIVERY_PERSON") {
           Alert.alert("Thành công", res.message || "Đăng nhập thành công", [
             {
               text: "OK",
@@ -56,9 +62,11 @@ export default function LoginScreen() {
           ]);
         }
       } else {
+        console.log("[Login] Login failed with message:", res.message);
         Alert.alert("Lỗi", res.message || "Đăng nhập thất bại");
       }
     } catch (error: any) {
+      console.log("[Login] Error:", error);
       Alert.alert("Lỗi", "Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {
       setIsLoading(false);
