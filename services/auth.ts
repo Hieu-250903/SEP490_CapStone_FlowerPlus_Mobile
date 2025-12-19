@@ -1,5 +1,5 @@
 import instance from "@/config/instance";
-import { LoginResponse, RegisterData } from "@/types";
+import { LoginResponse, RegisterData, UserData } from "@/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
 
@@ -34,6 +34,15 @@ export const getUserInfoApi = async () => {
     throw error;
   }
 };
+
+export const updateUserInfoApi = async (data: Partial<Omit<RegisterData, "password" | "email">>) => {
+  try {
+    const response = await instance.put("/auth/me", data);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
 export const userLoginApi = async (credentials: {
   email: string;
   password: string;
@@ -43,7 +52,7 @@ export const userLoginApi = async (credentials: {
       username: credentials.email,
       password: credentials.password,
     });
-    return response;
+    return response.data as LoginResponse;
   } catch (error) {
     throw error;
   }
