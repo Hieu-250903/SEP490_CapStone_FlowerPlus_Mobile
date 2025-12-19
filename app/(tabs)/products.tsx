@@ -124,7 +124,7 @@ export default function ProductsScreen() {
 
     if (priceRange !== "all") {
       filtered = filtered.filter((p) => {
-        const price = p.discountPrice || p.price;
+        const price = p.discountedPrice || p.originalPrice;
         switch (priceRange) {
           case "0-300":
             return price < 300000;
@@ -143,12 +143,16 @@ export default function ProductsScreen() {
     switch (sortBy) {
       case "price-asc":
         filtered.sort(
-          (a, b) => (a.discountPrice || a.price) - (b.discountPrice || b.price)
+          (a, b) =>
+            (a.discountedPrice || a.originalPrice) -
+            (b.discountedPrice || b.originalPrice)
         );
         break;
       case "price-desc":
         filtered.sort(
-          (a, b) => (b.discountPrice || b.price) - (a.discountPrice || a.price)
+          (a, b) =>
+            (b.discountedPrice || b.originalPrice) -
+            (a.discountedPrice || a.originalPrice)
         );
         break;
       case "name":

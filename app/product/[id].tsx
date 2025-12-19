@@ -32,8 +32,11 @@ export default function ProductDetailScreen() {
     "desc"
   );
   const [isFavorite, setIsFavorite] = useState(false);
-  const [product, setProduct] = useState(null);
+  const [product, setProduct] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
+  
+  const DEFAULT_IMAGE = "https://via.placeholder.com/400x400/EF4444/FFFFFF?text=FlowerPlus";
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -53,12 +56,14 @@ export default function ProductDetailScreen() {
   }, [id]);
 
   const handleAddToCart = async () => {
+    if (!product) return;
+    
     try {
       const response = await addToCart({
         productId: product.id,
         quantity: 1,
       });
-      if (response?.success) {
+      if (response && (response as any).success) {
         Alert.alert("Thành công", "Đã thêm sản phẩm vào giỏ hàng", [
           { text: "OK" },
         ]);
@@ -104,9 +109,35 @@ export default function ProductDetailScreen() {
     );
   }
 
-  const productImages = product.images ? JSON.parse(product.images) : [];
-  const galleryImages = productImages.length > 0 ? productImages : [];
-  const mainImage = galleryImages[0] || "https://via.placeholder.com/400";
+  const getProductImages = () => {
+    if (!product) return [];
+    try {
+      if (product.images) {
+        const imageArray = JSON.parse(product.images);
+        return imageArray.filter((img: string) => img && typeof img === "string" && img.startsWith("http"));
+      }
+      return [];
+    } catch (error) {
+      console.log("[ProductDetail] Error parsing images:", error);
+      return [];
+    }
+  };
+
+  const productImages = getProductImages();
+  const galleryImages = productImages.length > 0 ? productImages : [DEFAULT_IMAGE];
+  const mainImage = galleryImages[0] || DEFAULT_IMAGE;
+
+  const handleImageError = (index: number) => {
+    console.log("[ProductDetail] Image load error at index:", index);
+    setImageErrors((prev) => new Set(prev).add(index));
+  };
+
+  const getImageUri = (img: string, index: number) => {
+    if (imageErrors.has(index)) {
+      return DEFAULT_IMAGE;
+    }
+    return img && typeof img === "string" && img.startsWith("http") ? img : DEFAULT_IMAGE;
+  };
 
   const categoryName = product.categories?.[0]?.name || "Chưa phân loại";
 
@@ -142,7 +173,7 @@ export default function ProductDetailScreen() {
             <Text style={styles.trustBadgeText} numberOfLines={2}>
               <Text style={styles.trustBadgeBold}>Giao 2-4 giờ</Text>
               {"\n"}
-              Nội thành TPHCM
+              Nội thành TP Đà Nẵng
             </Text>
           </View>
           <View style={[styles.trustBadge, styles.trustBadgeBlue]}>
@@ -158,9 +189,14 @@ export default function ProductDetailScreen() {
         <View style={styles.imageSection}>
           <View style={styles.mainImageContainer}>
             <Image
-              source={{ uri: mainImage }}
+              source={{ 
+                uri: getImageUri(mainImage, 0),
+                cache: "force-cache"
+              }}
               style={styles.mainImage}
               resizeMode="cover"
+              onError={() => handleImageError(0)}
+              defaultSource={{ uri: DEFAULT_IMAGE }}
             />
 
             <View style={styles.freshBadge}>
@@ -186,9 +222,17 @@ export default function ProductDetailScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.thumbnails}
             >
-              {galleryImages.map((img, idx) => (
+              {galleryImages.map((img: string, idx: number) => (
                 <TouchableOpacity key={idx} style={styles.thumbnail}>
-                  <Image source={{ uri: img }} style={styles.thumbnailImage} />
+                  <Image 
+                    source={{ 
+                      uri: getImageUri(img, idx + 1),
+                      cache: "force-cache"
+                    }} 
+                    style={styles.thumbnailImage}
+                    onError={() => handleImageError(idx + 1)}
+                    defaultSource={{ uri: DEFAULT_IMAGE }}
+                  />
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -263,7 +307,7 @@ export default function ProductDetailScreen() {
           {product.compositions && product.compositions.length > 0 && (
             <View style={styles.compositionCard}>
               <Text style={styles.compositionTitle}>Thành phần sản phẩm</Text>
-              {product.compositions.map((item, index) => {
+              {product.compositions.map((item: any, index: number) => {
                 const itemImages = item.childImage
                   ? JSON.parse(item.childImage)
                   : [];
