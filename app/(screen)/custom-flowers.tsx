@@ -5,7 +5,6 @@ import {
   createCustomProduct,
   getProductsByType
 } from "@/services/product";
-import { Product } from "@/types";
 import { formatVND } from "@/utils/imageUtils";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -72,7 +71,9 @@ export default function ProductCustomImprovedUI() {
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
     null
   );
-  const [products, setProducts] = useState<Product[]>([]);
+  // API trả về cấu trúc sản phẩm khác với `Product` trong `types`,
+  // nên dùng any để tránh xung đột类型（hoặc có thể định nghĩa riêng interface nếu cần）。
+  const [products, setProducts] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [customProducts, setCustomProducts] = useState<any[]>([]);

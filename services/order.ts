@@ -2,14 +2,23 @@ import instance from "@/config/instance";
 
 interface CheckoutPayload {
   cancelUrl: string;
-  returnUrl: string;
+  // URL 用户取消支付后返回的链接，可选
+  returnUrl?: string | null;
   note: string;
-  phoneNumber: string;
-  recipientName: string;
-  requestDeliveryTime?: string;
+  // 一些场景（比如自定义花）不会单独传电话和收件人，因此设为可选
+  phoneNumber?: string;
+  recipientName?: string;
+  // 允许为空（例如不选择具体送达时间）
+  requestDeliveryTime?: string | null;
   shippingAddress: string;
-  userId: number;
+  // 有的接口只需要 userId，有的场景（如访客）可能没有
+  userId?: number;
+  // 下单商品 ID（可选，因为 checkoutOrder 没用到）
   productId?: number;
+  // 使用的优惠码（仅普通结算在用）
+  voucherCode?: string | null;
+  // 结算数量（仅 checkout-product 使用）
+  quantity?: number;
 }
 
 export const checkoutOrder = async (data: CheckoutPayload) => {
