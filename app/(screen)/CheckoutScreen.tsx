@@ -5,9 +5,7 @@ import { formatVND } from "@/utils/imageUtils";
 import { Ionicons } from "@expo/vector-icons";
 import { getVouchers, Voucher, calculateDiscount } from "@/services/voucher";
 import VoucherCard from "@/components/VoucherCard";
-import DateTimePicker, {
-  DateTimePickerAndroid,
-} from "@react-native-community/datetimepicker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -41,7 +39,7 @@ export default function CheckoutScreen() {
 
   const [note, setNote] = useState("");
   const [deliveryDate, setDeliveryDate] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false); // iOS only
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Voucher states
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -56,9 +54,9 @@ export default function CheckoutScreen() {
   useEffect(() => {
     const fetchAddresses = async () => {
       const res = await userProfileApi();
-      if (res && (res as any).success) {
-        setAddressList((res as any).data.deliveryAddresses || []);
-        const defaultAddress = (res as any).data.deliveryAddresses.find(
+      if (res.success) {
+        setAddressList(res.data.deliveryAddresses || []);
+        const defaultAddress = res.data.deliveryAddresses.find(
           (addr: addressDelivery) => addr.default
         );
         if (defaultAddress) {
@@ -97,42 +95,14 @@ export default function CheckoutScreen() {
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
-    // iOS: 只在用户确认时才更新日期
-    if (event?.type === "set" && selectedDate) {
-      setDeliveryDate(selectedDate);
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
     }
-  };
 
-  // Android: dùng API tĩnh để tránh lỗi dismiss undefined
-  const openAndroidDatePicker = () => {
-    try {
-      const currentValue = deliveryDate || new Date();
-
-      // Bước 1: chọn ngày
-      DateTimePickerAndroid.open({
-        value: currentValue,
-        mode: "date",
-        minimumDate: new Date(),
-        onChange: (event, date) => {
-          if (event.type !== "set" || !date) return;
-
-          // Bước 2: chọn giờ cho ngày đã chọn
-          DateTimePickerAndroid.open({
-            value: date,
-            mode: "time",
-            is24Hour: true,
-            onChange: (timeEvent, timeDate) => {
-              if (timeEvent.type !== "set" || !timeDate) return;
-              const finalDate = new Date(date);
-              finalDate.setHours(timeDate.getHours());
-              finalDate.setMinutes(timeDate.getMinutes());
-              setDeliveryDate(finalDate);
-            },
-          });
-        },
-      });
-    } catch (error) {
-      console.error("Android DatePicker error:", error);
+    if (event.type === "set" || selectedDate) {
+      if (selectedDate) {
+        setDeliveryDate(selectedDate);
+      }
     }
   };
 
@@ -156,7 +126,7 @@ export default function CheckoutScreen() {
         cancelUrl: "http://localhost:3000/checkout/cancel",
         returnUrl: "http://localhost:3000/checkout/success",
         note: note,
-        phoneNumber: String(selectedAddress.phoneNumber),
+        phoneNumber: selectedAddress.phoneNumber,
         recipientName: selectedAddress.recipientName,
         shippingAddress: `${selectedAddress.address}, ${selectedAddress.ward}, ${selectedAddress.district}, ${selectedAddress.province}`,
         requestDeliveryTime: deliveryDate ? deliveryDate.toISOString() : null,
@@ -209,7 +179,7 @@ export default function CheckoutScreen() {
       Alert.alert("Thành công", "Thanh toán thành công!", [
         {
           text: "Xem đơn hàng",
-          onPress: () => router.replace("/orders/all-orders"),
+          onPress: () => router.replace("/(tabs)/orders"),
         },
       ]);
     } else if (url.includes("/cancel") || url.includes("cancel=true")) {
@@ -286,7 +256,7 @@ export default function CheckoutScreen() {
       if (voucher.minOrderValue && total < voucher.minOrderValue) return false;
 
       if (!voucher.applyAllProducts) {
-        const hasApplicableProduct = productIds.some((id: number) =>
+        const hasApplicableProduct = productIds.some((id) =>
           voucher.productIds.includes(id)
         );
         if (!hasApplicableProduct) return false;
@@ -386,11 +356,7 @@ export default function CheckoutScreen() {
             </View>
             <TouchableOpacity
               style={styles.dateInputContainer}
-              onPress={() =>
-                Platform.OS === "android"
-                  ? openAndroidDatePicker()
-                  : setShowDatePicker(true)
-              }
+              onPress={() => setShowDatePicker(true)}
             >
               <Text
                 style={[
@@ -623,40 +589,50 @@ export default function CheckoutScreen() {
       </Modal>
 
       {/* --- DATE PICKER MODAL (ĐÃ FIX UI) --- */}
-      {showDatePicker && Platform.OS === "ios" && (
-        <Modal
-          transparent={true}
-          animationType="slide"
-          visible={showDatePicker}
-          onRequestClose={() => setShowDatePicker(false)}
-        >
-          <View style={styles.iosDatePickerOverlay}>
-            <View style={styles.iosDatePickerContent}>
-              <View style={styles.iosDatePickerHeader}>
-                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.iosCancelText}>Hủy</Text>
-                </TouchableOpacity>
-                <Text style={styles.iosHeaderTitle}>Chọn thời gian</Text>
-                <TouchableOpacity onPress={confirmIOSDate}>
-                  <Text style={styles.iosConfirmText}>Xong</Text>
-                </TouchableOpacity>
+      {showDatePicker &&
+        (Platform.OS === "ios" ? (
+          <Modal
+            transparent={true}
+            animationType="slide"
+            visible={showDatePicker}
+            onRequestClose={() => setShowDatePicker(false)}
+          >
+            <View style={styles.iosDatePickerOverlay}>
+              <View style={styles.iosDatePickerContent}>
+                <View style={styles.iosDatePickerHeader}>
+                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                    <Text style={styles.iosCancelText}>Hủy</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.iosHeaderTitle}>Chọn thời gian</Text>
+                  <TouchableOpacity onPress={confirmIOSDate}>
+                    <Text style={styles.iosConfirmText}>Xong</Text>
+                  </TouchableOpacity>
+                </View>
+                {/* ĐÃ THÊM textColor="black" VÀ themeVariant="light" ĐỂ FIX LỖI TRẮNG BÓC */}
+                <DateTimePicker
+                  value={deliveryDate || new Date()}
+                  mode="datetime"
+                  display="spinner"
+                  onChange={handleDateChange}
+                  minimumDate={new Date()}
+                  locale="vi-VN"
+                  textColor="black" // FIX CHO IOS
+                  themeVariant="light" // FIX CHO IOS
+                  style={{ backgroundColor: "white", width: "100%" }}
+                />
               </View>
-              {/* ĐÃ THÊM textColor="black" VÀ themeVariant="light" ĐỂ FIX LỖI TRẮNG BÓC */}
-              <DateTimePicker
-                value={deliveryDate || new Date()}
-                mode="datetime"
-                display="spinner"
-                onChange={handleDateChange}
-                minimumDate={new Date()}
-                locale="vi-VN"
-                textColor="black" // FIX CHO IOS
-                themeVariant="light" // FIX CHO IOS
-                style={{ backgroundColor: "white", width: "100%" }}
-              />
             </View>
-          </View>
-        </Modal>
-      )}
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={deliveryDate || new Date()}
+            mode="datetime"
+            is24Hour={true}
+            display="default"
+            onChange={handleDateChange}
+            minimumDate={new Date()}
+          />
+        ))}
     </SafeAreaView>
   );
 }
