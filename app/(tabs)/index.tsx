@@ -92,8 +92,8 @@ interface CategoryGroup {
 const transformApiProduct = (apiProduct: any) => ({
   id: apiProduct.id,
   name: apiProduct.name,
-  price: apiProduct.price || 0,
-  discountPrice: apiProduct.salePrice || apiProduct.price || 0,
+  originalPrice: apiProduct.price || 0,
+  discountedPrice: apiProduct.salePrice || apiProduct.price || 0,
   image: getProductImage(apiProduct),
   images: apiProduct.images,
   description: apiProduct.description || "",
@@ -124,7 +124,7 @@ export default function HomeScreen() {
         pageSize: 100,
       });
 
-      const apiProducts = response?.data?.listObjects || response?.listObjects || [];
+      const apiProducts = response?.data?.listObjects || [];
 
       const transformed = apiProducts
         .filter((p: any) => p.isActive !== false)

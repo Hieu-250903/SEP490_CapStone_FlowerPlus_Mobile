@@ -132,7 +132,7 @@ const OrderDelivered = () => {
 
   const handleOrderPress = (order: Order) => {
     router.push({
-      pathname: "/(screen)/OrderDetailScreen",
+      pathname: "/(screen)/transactions-history",
       params: {
         orderCode: order.orderCode,
       },
