@@ -20,8 +20,8 @@ export default function ProfileScreen() {
   const fetchUserData = async () => {
     try {
       const userData = await userProfileApi();
-      if (userData?.data?.success && userData.data?.data) {
-        setUser(userData.data.data);
+      if (userData && userData?.data && userData?.data?.success) {
+        setUser(userData.data);
       } else {
         authService.clearAuth();
         router.replace("/(auth)/login");
