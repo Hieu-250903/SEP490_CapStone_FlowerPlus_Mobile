@@ -1,16 +1,18 @@
-import { userProfileApi } from "@/services/auth";
+import { userProfileApi, authService } from "@/services/auth";
 import { checkoutOrder } from "@/services/order";
+import { createOrUpdateAddress } from "@/services/address";
 import { addressDelivery } from "@/types";
 import { formatVND } from "@/utils/imageUtils";
 import { Ionicons } from "@expo/vector-icons";
 import { getVouchers, Voucher, calculateDiscount } from "@/services/voucher";
 import VoucherCard from "@/components/VoucherCard";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -46,6 +48,19 @@ export default function CheckoutScreen() {
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
   const [showVoucherList, setShowVoucherList] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
+
+  // Create address states
+  const [showCreateAddressModal, setShowCreateAddressModal] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    address: "",
+    recipientName: "",
+    phoneNumber: "",
+    province: "",
+    district: "",
+    ward: "",
+    default: false,
+  });
+  const [isCreatingAddress, setIsCreatingAddress] = useState(false);
 
   const items = params.items ? JSON.parse(params.items as string) : [];
   const total = params.total ? Number(params.total) : 0;
@@ -229,7 +244,6 @@ export default function CheckoutScreen() {
     );
   };
 
-  // Voucher handlers
   const handleSelectVoucher = (voucher: Voucher) => {
     setSelectedVoucher(voucher);
     const discount = calculateDiscount(voucher, total);
@@ -266,6 +280,67 @@ export default function CheckoutScreen() {
     });
   };
 
+  const handleCreateAddress = async () => {
+    if (!newAddress.recipientName || !newAddress.phoneNumber || !newAddress.address ||
+      !newAddress.province || !newAddress.district || !newAddress.ward) {
+      Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin địa chỉ");
+      return;
+    }
+
+    const phoneRegex = /^(0)(3|5|7|8|9)[0-9]{8}$/;
+    if (!phoneRegex.test(newAddress.phoneNumber)) {
+      Alert.alert(
+        "Số điện thoại không hợp lệ",
+        "Vui lòng nhập số điện thoại Việt Nam hợp lệ (10 số, bắt đầu bằng 03, 05, 07, 08, 09)"
+      );
+      return;
+    }
+
+    setIsCreatingAddress(true);
+    try {
+      const userId = await authService.getUserId();
+      if (!userId) {
+        Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng");
+        setIsCreatingAddress(false);
+        return;
+      }
+      const response = await createOrUpdateAddress({
+        ...newAddress,
+        userId,
+      });
+      if (response?.success || response?.data) {
+        Alert.alert("Thành công", "Đã tạo địa chỉ mới");
+        setShowCreateAddressModal(false);
+        setNewAddress({
+          address: "",
+          recipientName: "",
+          phoneNumber: "",
+          province: "",
+          district: "",
+          ward: "",
+          default: false,
+        });
+        const res = await userProfileApi();
+        if (res.success) {
+          setAddressList(res.data.deliveryAddresses || []);
+          if (newAddress.default || res.data.deliveryAddresses.length === 1) {
+            const newAddr = res.data.deliveryAddresses.find(
+              (addr: addressDelivery) => addr.recipientName === newAddress.recipientName
+            );
+            if (newAddr) setSelectedAddress(newAddr);
+          }
+        }
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "Lỗi",
+        error?.response?.data?.message || "Không thể tạo địa chỉ"
+      );
+    } finally {
+      setIsCreatingAddress(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
@@ -277,10 +352,16 @@ export default function CheckoutScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* SECTION 1: ĐỊA CHỈ */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
+            <TouchableOpacity
+              style={styles.btnAddAddress}
+              onPress={() => setShowCreateAddressModal(true)}
+            >
+              <Ionicons name="add" size={16} color="#BE123C" />
+              <Text style={styles.btnAddAddressText}>Tạo mới</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.addressListContainer}>
             {!isAddressExpanded ? (
@@ -588,51 +669,136 @@ export default function CheckoutScreen() {
         </SafeAreaView>
       </Modal>
 
-      {/* --- DATE PICKER MODAL (ĐÃ FIX UI) --- */}
-      {showDatePicker &&
-        (Platform.OS === "ios" ? (
-          <Modal
-            transparent={true}
-            animationType="slide"
-            visible={showDatePicker}
-            onRequestClose={() => setShowDatePicker(false)}
+      <DateTimePickerModal
+        isVisible={showDatePicker}
+        mode="datetime"
+        onConfirm={(date) => {
+          setDeliveryDate(date);
+          setShowDatePicker(false);
+        }}
+        onCancel={() => setShowDatePicker(false)}
+        minimumDate={new Date()}
+        locale="vi_VN"
+        is24Hour={true}
+      />
+      {/* Create Address Modal */}
+      <Modal
+        visible={showCreateAddressModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCreateAddressModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer} edges={["top"]}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={() => setShowCreateAddressModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <Ionicons name="close" size={24} color="#1F2937" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Tạo địa chỉ mới</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ flex: 1 }}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
           >
-            <View style={styles.iosDatePickerOverlay}>
-              <View style={styles.iosDatePickerContent}>
-                <View style={styles.iosDatePickerHeader}>
-                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                    <Text style={styles.iosCancelText}>Hủy</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.iosHeaderTitle}>Chọn thời gian</Text>
-                  <TouchableOpacity onPress={confirmIOSDate}>
-                    <Text style={styles.iosConfirmText}>Xong</Text>
-                  </TouchableOpacity>
-                </View>
-                {/* ĐÃ THÊM textColor="black" VÀ themeVariant="light" ĐỂ FIX LỖI TRẮNG BÓC */}
-                <DateTimePicker
-                  value={deliveryDate || new Date()}
-                  mode="datetime"
-                  display="spinner"
-                  onChange={handleDateChange}
-                  minimumDate={new Date()}
-                  locale="vi-VN"
-                  textColor="black" // FIX CHO IOS
-                  themeVariant="light" // FIX CHO IOS
-                  style={{ backgroundColor: "white", width: "100%" }}
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Tên người nhận *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Nhập tên người nhận"
+                  value={newAddress.recipientName}
+                  onChangeText={(text) => setNewAddress({ ...newAddress, recipientName: text })}
                 />
               </View>
-            </View>
-          </Modal>
-        ) : (
-          <DateTimePicker
-            value={deliveryDate || new Date()}
-            mode="datetime"
-            is24Hour={true}
-            display="default"
-            onChange={handleDateChange}
-            minimumDate={new Date()}
-          />
-        ))}
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Số điện thoại *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Nhập số điện thoại"
+                  keyboardType="phone-pad"
+                  value={newAddress.phoneNumber}
+                  onChangeText={(text) => setNewAddress({ ...newAddress, phoneNumber: text })}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Tỉnh/Thành phố *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="VD: TP. Hồ Chí Minh"
+                  value={newAddress.province}
+                  onChangeText={(text) => setNewAddress({ ...newAddress, province: text })}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Quận/Huyện *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="VD: Quận 1"
+                  value={newAddress.district}
+                  onChangeText={(text) => setNewAddress({ ...newAddress, district: text })}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Phường/Xã *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="VD: Phường Bến Nghé"
+                  value={newAddress.ward}
+                  onChangeText={(text) => setNewAddress({ ...newAddress, ward: text })}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Địa chỉ cụ thể *</Text>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="Số nhà, tên đường..."
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  value={newAddress.address}
+                  onChangeText={(text) => setNewAddress({ ...newAddress, address: text })}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => setNewAddress({ ...newAddress, default: !newAddress.default })}
+              >
+                <View style={[styles.checkbox, newAddress.default && styles.checkboxChecked]}>
+                  {newAddress.default && <Ionicons name="checkmark" size={16} color="#FFF" />}
+                </View>
+                <Text style={styles.checkboxLabel}>Đặt làm địa chỉ mặc định</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.submitButton, isCreatingAddress && styles.submitButtonDisabled]}
+                onPress={handleCreateAddress}
+                disabled={isCreatingAddress}
+              >
+                {isCreatingAddress ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <Text style={styles.submitButtonText}>Tạo địa chỉ</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -660,11 +826,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 16, fontWeight: "600", color: "#1F2937" },
   btnAddAddress: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: "#BE123C",
+    gap: 4,
   },
   btnAddAddressText: { fontSize: 12, color: "#BE123C", fontWeight: "500" },
 
@@ -970,4 +1139,53 @@ const styles = StyleSheet.create({
   iosCancelText: { color: "#6B7280", fontSize: 16 },
   iosConfirmText: { color: "#047857", fontSize: 16, fontWeight: "600" },
   iosHeaderTitle: { fontSize: 16, fontWeight: "600", color: "#1F2937" },
+  // Create Address Modal Styles
+  textInput: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: "#1F2937",
+    backgroundColor: "#FFF",
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 16,
+    gap: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    borderRadius: 4,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkboxChecked: {
+    backgroundColor: "#BE123C",
+    borderColor: "#BE123C",
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: "#374151",
+  },
+  submitButton: {
+    backgroundColor: "#BE123C",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  submitButtonDisabled: {
+    backgroundColor: "#9CA3AF",
+  },
+  submitButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
 });

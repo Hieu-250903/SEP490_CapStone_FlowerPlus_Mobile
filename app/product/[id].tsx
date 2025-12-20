@@ -1,4 +1,5 @@
 import { addToCart } from "@/services/cart";
+import { checkFavoriteStatus, toggleFavorite } from "@/services/favorites";
 import { getProductDetail } from "@/services/product";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -32,6 +33,7 @@ export default function ProductDetailScreen() {
     "desc"
   );
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -50,6 +52,22 @@ export default function ProductDetailScreen() {
       }
     };
     fetchProduct();
+  }, [id]);
+
+  useEffect(() => {
+    const fetchFavoriteStatus = async () => {
+      try {
+        const response = await checkFavoriteStatus(Number(id));
+        if (response?.success && response?.data !== undefined) {
+          setIsFavorite(response.data);
+        }
+      } catch (error) {
+        console.error("Error checking favorite status:", error);
+      }
+    };
+    if (id) {
+      fetchFavoriteStatus();
+    }
   }, [id]);
 
   const handleAddToCart = async () => {
@@ -71,6 +89,33 @@ export default function ProductDetailScreen() {
       );
     }
   };
+
+  const handleToggleFavorite = async () => {
+    if (isTogglingFavorite) return;
+
+    setIsTogglingFavorite(true);
+    const previousState = isFavorite;
+
+    // Optimistic update
+    setIsFavorite(!isFavorite);
+
+    try {
+      const response = await toggleFavorite(Number(id));
+      if (!response?.success) {
+        setIsFavorite(previousState);
+        Alert.alert("Lỗi", "Không thể cập nhật yêu thích. Vui lòng thử lại.");
+      }
+    } catch (error: any) {
+      setIsFavorite(previousState);
+      Alert.alert(
+        "Lỗi",
+        error?.message || "Không thể cập nhật yêu thích. Vui lòng thử lại."
+      );
+    } finally {
+      setIsTogglingFavorite(false);
+    }
+  };
+
   const handleCheckout = () => {
     router.push("/(tabs)/cart");
   };
@@ -142,7 +187,7 @@ export default function ProductDetailScreen() {
             <Text style={styles.trustBadgeText} numberOfLines={2}>
               <Text style={styles.trustBadgeBold}>Giao 2-4 giờ</Text>
               {"\n"}
-              Nội thành TP Đà Nẵng
+              Nội thành TPHCM
             </Text>
           </View>
           <View style={[styles.trustBadge, styles.trustBadgeBlue]}>
@@ -169,8 +214,9 @@ export default function ProductDetailScreen() {
             </View>
 
             <TouchableOpacity
-              style={styles.favoriteButtonDetail}
-              onPress={() => setIsFavorite(!isFavorite)}
+              style={[styles.favoriteButtonDetail, isTogglingFavorite && styles.favoriteButtonDisabled]}
+              onPress={handleToggleFavorite}
+              disabled={isTogglingFavorite}
             >
               <Ionicons
                 name={isFavorite ? "heart" : "heart-outline"}
@@ -418,6 +464,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.3)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  favoriteButtonDisabled: {
+    opacity: 0.6,
   },
   thumbnails: {
     gap: 8,

@@ -1,15 +1,18 @@
 import { getListTransactionsByUser } from "@/services/order";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Linking,
   Modal,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -24,33 +27,28 @@ interface Transaction {
   paymentLinkId: string;
 }
 
-type TransactionStatus = "ALL" | "PENDING" | "PAID" | "CANCELLED";
+type TransactionStatus = "ALL" | "PENDING" | "SUCCESS" | "CANCELLED";
 
-const STATUS_COLORS: Record<
-  string,
-  { bg: string; text: string; icon: string }
-> = {
+const STATUS_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
   PENDING: { bg: "#FEF3C7", text: "#92400E", icon: "time-outline" },
-  PAID: { bg: "#D1FAE5", text: "#065F46", icon: "checkmark-circle" },
+  SUCCESS: { bg: "#D1FAE5", text: "#065F46", icon: "checkmark-circle" },
   CANCELLED: { bg: "#FEE2E2", text: "#991B1B", icon: "close-circle" },
 };
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Chờ thanh toán",
-  PAID: "Đã thanh toán",
+  SUCCESS: "Đã thanh toán",
   CANCELLED: "Đã hủy",
 };
 
 const TransactionsHistory = () => {
   const router = useRouter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<
-    Transaction[]
-  >([]);
+  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedStatus, setSelectedStatus] =
-    useState<TransactionStatus>("ALL");
+  const [selectedStatus, setSelectedStatus] = useState<TransactionStatus>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState("");
   const [webViewLoading, setWebViewLoading] = useState(true);
@@ -62,7 +60,7 @@ const TransactionsHistory = () => {
 
   useEffect(() => {
     filterTransactions();
-  }, [selectedStatus, transactions]);
+  }, [selectedStatus, searchQuery, transactions]);
 
   const fetchTransactions = async (isRefresh = false) => {
     try {
@@ -73,6 +71,7 @@ const TransactionsHistory = () => {
       }
 
       const response = await getListTransactionsByUser();
+      console.log(response.data);
       if (response?.data) {
         const sortedTransactions = [...response.data].sort(
           (a, b) => parseInt(b.orderCode) - parseInt(a.orderCode)
@@ -83,6 +82,7 @@ const TransactionsHistory = () => {
       }
     } catch (error) {
       console.error("Error fetching transactions:", error);
+      Alert.alert("Lỗi", "Không thể tải danh sách giao dịch");
       setTransactions([]);
     } finally {
       setLoading(false);
@@ -91,15 +91,25 @@ const TransactionsHistory = () => {
   };
 
   const filterTransactions = () => {
-    if (selectedStatus === "ALL") {
-      setFilteredTransactions(transactions);
-    } else {
-      setFilteredTransactions(
-        transactions.filter(
-          (transaction) => transaction.status === selectedStatus
-        )
+    let filtered = [...transactions];
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((transaction) =>
+        transaction.orderCode.toLowerCase().includes(query) ||
+        transaction.paymentLinkId.toLowerCase().includes(query)
       );
     }
+
+    // Filter by status
+    if (selectedStatus !== "ALL") {
+      filtered = filtered.filter(
+        (transaction) => transaction.status === selectedStatus
+      );
+    }
+
+    setFilteredTransactions(filtered);
   };
 
   const onRefresh = useCallback(() => {
@@ -148,17 +158,15 @@ const TransactionsHistory = () => {
   };
 
   const getStatusStyle = (status: string) => {
-    return (
-      STATUS_COLORS[status] || {
-        bg: "#F3F4F6",
-        text: "#6B7280",
-        icon: "help-circle",
-      }
-    );
+    // Map any status other than PENDING or SUCCESS to CANCELLED
+    const normalizedStatus = status === "PENDING" || status === "SUCCESS" ? status : "CANCELLED";
+    return STATUS_COLORS[normalizedStatus] || STATUS_COLORS.CANCELLED;
   };
 
   const getStatusLabel = (status: string) => {
-    return STATUS_LABELS[status] || status;
+    // Map any status other than PENDING or SUCCESS to CANCELLED
+    const normalizedStatus = status === "PENDING" || status === "SUCCESS" ? status : "CANCELLED";
+    return STATUS_LABELS[normalizedStatus] || "Đã hủy";
   };
 
   const handlePaymentPress = (checkoutUrl: string, orderCode: string) => {
@@ -170,10 +178,7 @@ const TransactionsHistory = () => {
 
   const handleClosePaymentModal = () => {
     Alert.alert("Xác nhận", "Bạn có muốn hủy thanh toán?", [
-      {
-        text: "Tiếp tục thanh toán",
-        style: "cancel",
-      },
+      { text: "Tiếp tục thanh toán", style: "cancel" },
       {
         text: "Hủy",
         style: "destructive",
@@ -200,27 +205,13 @@ const TransactionsHistory = () => {
 
       Alert.alert("Thành công", "Thanh toán thành công!", [
         {
-          text: "Xem đơn hàng",
-          onPress: () => {
-            fetchTransactions(true);
-            router.push({
-              pathname: "/(screen)/OrderDetailScreen",
-              params: {
-                orderCode: currentTransactionCode,
-              },
-            });
-          },
-        },
-        {
           text: "OK",
           onPress: () => {
             fetchTransactions(true);
           },
         },
       ]);
-    }
-    // Check for cancel/failure URL patterns
-    else if (
+    } else if (
       url.includes("/cancel") ||
       url.includes("cancel=true") ||
       url.includes("status=CANCELLED")
@@ -240,49 +231,40 @@ const TransactionsHistory = () => {
     }
   };
 
-  const handleOrderPress = (orderCode: string) => {
-    router.push({
-      pathname: "/(screen)/OrderDetailScreen",
-      params: {
-        orderCode: orderCode,
-      },
-    });
-  };
-
   const renderFilterTabs = () => {
     const statuses: {
       key: TransactionStatus;
       label: string;
       count?: number;
     }[] = [
-      { key: "ALL", label: "Tất cả", count: transactions.length },
-      {
-        key: "PENDING",
-        label: "Chờ TT",
-        count: transactions.filter((t) => t.status === "PENDING").length,
-      },
-      {
-        key: "PAID",
-        label: "Đã TT",
-        count: transactions.filter((t) => t.status === "PAID").length,
-      },
-      {
-        key: "CANCELLED",
-        label: "Đã hủy",
-        count: transactions.filter((t) => t.status === "CANCELLED").length,
-      },
-    ];
+        { key: "ALL", label: "Tất cả", count: transactions.length },
+        {
+          key: "PENDING",
+          label: "Chờ TT",
+          count: transactions.filter((t) => t.status === "PENDING").length,
+        },
+        {
+          key: "SUCCESS",
+          label: "Đã TT",
+          count: transactions.filter((t) => t.status === "SUCCESS").length,
+        },
+        {
+          key: "CANCELLED",
+          label: "Đã hủy",
+          count: transactions.filter((t) => t.status !== "PENDING" && t.status !== "SUCCESS").length,
+        },
+      ];
 
     return (
       <View style={styles.filterContainer}>
-        <FlatList
+        <ScrollView
           horizontal
-          data={statuses}
-          keyExtractor={(item) => item.key}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterList}
-          renderItem={({ item }) => (
+          contentContainerStyle={styles.filterScrollContent}
+        >
+          {statuses.map((item) => (
             <TouchableOpacity
+              key={item.key}
               style={[
                 styles.filterButton,
                 selectedStatus === item.key && styles.filterButtonActive,
@@ -308,7 +290,7 @@ const TransactionsHistory = () => {
                     style={[
                       styles.filterBadgeText,
                       selectedStatus === item.key &&
-                        styles.filterBadgeTextActive,
+                      styles.filterBadgeTextActive,
                     ]}
                   >
                     {item.count}
@@ -316,8 +298,8 @@ const TransactionsHistory = () => {
                 </View>
               )}
             </TouchableOpacity>
-          )}
-        />
+          ))}
+        </ScrollView>
       </View>
     );
   };
@@ -331,11 +313,7 @@ const TransactionsHistory = () => {
     const timeAgo = getTimeAgo(transaction.orderCode);
 
     return (
-      <TouchableOpacity
-        style={styles.transactionCard}
-        onPress={() => handleOrderPress(transaction.orderCode)}
-        activeOpacity={0.7}
-      >
+      <View style={styles.transactionCard}>
         <View style={styles.cardHeader}>
           <View style={styles.cardHeaderLeft}>
             <View
@@ -376,8 +354,8 @@ const TransactionsHistory = () => {
 
           <View style={styles.infoRow}>
             <Ionicons name="pricetag-outline" size={16} color="#9CA3AF" />
-            <Text style={styles.infoText}>
-              Mã thanh toán: {transaction.paymentLinkId.substring(0, 16)}...
+            <Text style={styles.infoText} numberOfLines={1}>
+              Mã TT: {transaction.paymentLinkId.substring(0, 20)}...
             </Text>
           </View>
         </View>
@@ -406,18 +384,8 @@ const TransactionsHistory = () => {
               <Text style={styles.payButtonText}>Thanh toán</Text>
             </TouchableOpacity>
           )}
-
-          {transaction.status !== "PENDING" && (
-            <TouchableOpacity
-              style={styles.detailButton}
-              onPress={() => handleOrderPress(transaction.orderCode)}
-            >
-              <Text style={styles.detailButtonText}>Chi tiết</Text>
-              <Ionicons name="chevron-forward" size={16} color="#047857" />
-            </TouchableOpacity>
-          )}
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -427,64 +395,30 @@ const TransactionsHistory = () => {
         <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
       </View>
       <Text style={styles.emptyTitle}>
-        {selectedStatus === "ALL"
-          ? "Chưa có giao dịch nào"
+        {selectedStatus === "ALL" || searchQuery
+          ? "Không tìm thấy giao dịch"
           : `Không có giao dịch ${getStatusLabel(
-              selectedStatus
-            ).toLowerCase()}`}
+            selectedStatus
+          ).toLowerCase()}`}
       </Text>
       <Text style={styles.emptyText}>
-        {selectedStatus === "ALL"
+        {selectedStatus === "ALL" && !searchQuery
           ? "Lịch sử giao dịch của bạn sẽ hiển thị tại đây"
-          : "Thử chọn trạng thái khác để xem giao dịch"}
+          : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm"}
       </Text>
+      {(searchQuery || selectedStatus !== "ALL") && (
+        <TouchableOpacity
+          style={styles.clearFilterButton}
+          onPress={() => {
+            setSearchQuery("");
+            setSelectedStatus("ALL");
+          }}
+        >
+          <Text style={styles.clearFilterText}>Xóa bộ lọc</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
-
-  const renderStats = () => {
-    const totalAmount = filteredTransactions.reduce(
-      (sum, transaction) => sum + transaction.amount,
-      0
-    );
-    const pendingCount = transactions.filter(
-      (t) => t.status === "PENDING"
-    ).length;
-    const paidCount = transactions.filter((t) => t.status === "PAID").length;
-
-    return (
-      <View style={styles.statsContainer}>
-        <View style={[styles.statCard, styles.statCardLarge]}>
-          <View style={styles.statCardHeader}>
-            <Ionicons name="wallet-outline" size={28} color="#047857" />
-            <View style={styles.statBadge}>
-              <Text style={styles.statBadgeText}>
-                {selectedStatus === "ALL"
-                  ? "Tổng"
-                  : getStatusLabel(selectedStatus)}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.statAmount}>{formatVND(totalAmount)}</Text>
-          <Text style={styles.statLabel}>
-            {filteredTransactions.length} giao dịch
-          </Text>
-        </View>
-
-        <View style={styles.statColumn}>
-          <View style={styles.statCardSmall}>
-            <Ionicons name="time-outline" size={20} color="#F59E0B" />
-            <Text style={styles.statNumberSmall}>{pendingCount}</Text>
-            <Text style={styles.statLabelSmall}>Chờ thanh toán</Text>
-          </View>
-          <View style={styles.statCardSmall}>
-            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-            <Text style={styles.statNumberSmall}>{paidCount}</Text>
-            <Text style={styles.statLabelSmall}>Đã thanh toán</Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
 
   if (loading) {
     return (
@@ -528,6 +462,32 @@ const TransactionsHistory = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Ionicons name="search" size={20} color="#9CA3AF" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm theo mã giao dịch..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#9CA3AF"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
+        <Text style={styles.resultCount}>
+          Tìm thấy{" "}
+          <Text style={styles.resultCountBold}>
+            {filteredTransactions.length}
+          </Text>{" "}
+          giao dịch
+        </Text>
+      </View>
+
       {renderFilterTabs()}
 
       <FlatList
@@ -536,9 +496,6 @@ const TransactionsHistory = () => {
         renderItem={renderTransactionCard}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          filteredTransactions.length > 0 ? renderStats : null
-        }
         ListEmptyComponent={renderEmptyState}
         refreshControl={
           <RefreshControl
@@ -632,12 +589,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6B7280",
   },
+  searchContainer: {
+    backgroundColor: "#FFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  searchInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1F2937",
+  },
+  resultCount: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "#6B7280",
+  },
+  resultCountBold: {
+    fontWeight: "600",
+    color: "#047857",
+  },
   filterContainer: {
     backgroundColor: "#FFF",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
   },
-  filterList: {
+  filterScrollContent: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,
@@ -685,76 +672,6 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 16,
   },
-  statsContainer: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 16,
-  },
-  statCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statCardLarge: {
-    flex: 1,
-    gap: 8,
-  },
-  statCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  statBadge: {
-    backgroundColor: "#F0FDF4",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statBadgeText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#047857",
-  },
-  statAmount: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#047857",
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-  },
-  statColumn: {
-    gap: 12,
-  },
-  statCardSmall: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-    gap: 6,
-    width: 100,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statNumberSmall: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#1F2937",
-  },
-  statLabelSmall: {
-    fontSize: 11,
-    color: "#6B7280",
-    textAlign: "center",
-  },
   transactionCard: {
     backgroundColor: "#FFF",
     borderRadius: 12,
@@ -799,8 +716,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 12,
   },
   statusText: {
@@ -834,48 +751,32 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   amountLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#6B7280",
   },
   amountValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
-    color: "#1F2937",
+    color: "#047857",
   },
   payButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
     backgroundColor: "#047857",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
+    gap: 6,
   },
   payButtonText: {
     fontSize: 13,
     fontWeight: "600",
     color: "#FFF",
   },
-  detailButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "#F0FDF4",
-  },
-  detailButtonText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#047857",
-  },
   emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 80,
-    paddingHorizontal: 32,
+    justifyContent: "center",
+    paddingVertical: 60,
   },
   emptyIconContainer: {
     width: 120,
@@ -888,18 +789,28 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
     color: "#1F2937",
     marginBottom: 8,
-    textAlign: "center",
   },
   emptyText: {
     fontSize: 14,
-    color: "#9CA3AF",
+    color: "#6B7280",
     textAlign: "center",
-    lineHeight: 20,
+    paddingHorizontal: 32,
   },
-  // Modal Styles
+  clearFilterButton: {
+    marginTop: 16,
+    backgroundColor: "#047857",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  clearFilterText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFF",
+  },
   modalContainer: {
     flex: 1,
     backgroundColor: "#FFF",
@@ -912,7 +823,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
-    backgroundColor: "#FFF",
   },
   modalCloseButton: {
     width: 40,
@@ -925,24 +835,21 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1F2937",
   },
-  webView: {
-    flex: 1,
-  },
   webViewLoadingContainer: {
     position: "absolute",
-    top: 0,
+    top: "50%",
     left: 0,
     right: 0,
-    bottom: 0,
-    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FFF",
-    zIndex: 1,
+    gap: 12,
+    zIndex: 10,
   },
   webViewLoadingText: {
-    marginTop: 12,
     fontSize: 14,
     color: "#6B7280",
+  },
+  webView: {
+    flex: 1,
   },
 });
 

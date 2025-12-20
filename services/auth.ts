@@ -1,5 +1,5 @@
 import instance from "@/config/instance";
-import { LoginResponse, RegisterData, UserData } from "@/types";
+import { LoginResponse, RegisterData } from "@/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
 
@@ -34,15 +34,6 @@ export const getUserInfoApi = async () => {
     throw error;
   }
 };
-
-export const updateUserInfoApi = async (data: Partial<Omit<RegisterData, "password" | "email">>) => {
-  try {
-    const response = await instance.put("/auth/me", data);
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
 export const userLoginApi = async (credentials: {
   email: string;
   password: string;
@@ -52,16 +43,7 @@ export const userLoginApi = async (credentials: {
       username: credentials.email,
       password: credentials.password,
     });
-    // Backend trả về dạng { accessToken: string }
-    const data = response.data as { accessToken: string };
-
-    const result: LoginResponse = {
-      success: !!data?.accessToken,
-      message: data?.accessToken ? "Đăng nhập thành công" : "Đăng nhập thất bại",
-      data: data?.accessToken ? { accessToken: data.accessToken } : undefined,
-    };
-
-    return result;
+    return response;
   } catch (error) {
     throw error;
   }

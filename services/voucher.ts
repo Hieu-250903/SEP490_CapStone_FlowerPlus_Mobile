@@ -14,6 +14,7 @@ export interface Voucher {
     usedCount: number;
     applyAllProducts: boolean;
     productIds: number[];
+    status: "ACTIVE" | "USED" | "EXPIRED" | "NOT_STARTED";
 }
 
 export interface VoucherValidationResult {

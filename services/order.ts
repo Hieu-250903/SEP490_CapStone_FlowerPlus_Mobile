@@ -1,24 +1,61 @@
 import instance from "@/config/instance";
 
+// Order interfaces matching website
+export interface DeliveryStatus {
+  id: number;
+  step: 'PENDING_CONFIRMATION' | 'PREPARING' | 'DELIVERING' | 'DELIVERED' | 'DELIVERY_FAILED' | 'CANCELLED';
+  eventAt: string;
+  location?: string;
+  imageUrl?: string;
+  note?: string;
+}
+
+export interface OrderItem {
+  id: number;
+  productId: number;
+  productName: string;
+  productImage: string; // JSON string array
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface OrderTransaction {
+  id: number;
+  orderCode: string;
+  amount: number;
+  status: string;
+  checkoutUrl?: string;
+  paymentLinkId?: string;
+}
+
+export interface Order {
+  id: number;
+  orderCode: string;
+  recipientName: string;
+  phoneNumber: string;
+  shippingAddress: string;
+  note?: string;
+  total: number;
+  createdAt: string;
+  updatedAt: string;
+  cancelled: boolean;
+  items: OrderItem[];
+  deliveryStatuses: DeliveryStatus[];
+  transactions?: OrderTransaction[];
+  transaction?: OrderTransaction;
+}
+
 interface CheckoutPayload {
   cancelUrl: string;
-  // URL 用户取消支付后返回的链接，可选
-  returnUrl?: string | null;
+  returnUrl: string;
   note: string;
-  // 一些场景（比如自定义花）不会单独传电话和收件人，因此设为可选
-  phoneNumber?: string;
-  recipientName?: string;
-  // 允许为空（例如不选择具体送达时间）
-  requestDeliveryTime?: string | null;
+  phoneNumber: string;
+  recipientName: string;
+  requestDeliveryTime?: string;
   shippingAddress: string;
-  // 有的接口只需要 userId，有的场景（如访客）可能没有
-  userId?: number;
-  // 下单商品 ID（可选，因为 checkoutOrder 没用到）
+  userId: number;
   productId?: number;
-  // 使用的优惠码（仅普通结算在用）
-  voucherCode?: string | null;
-  // 结算数量（仅 checkout-product 使用）
-  quantity?: number;
 }
 
 export const checkoutOrder = async (data: CheckoutPayload) => {
@@ -98,6 +135,16 @@ export const getListTransactionsByUser = async () => {
     return response;
   } catch (error) {
     console.error("Error getting transactions:", error);
+    throw error;
+  }
+};
+
+export const getTransactionsWithOrder = async () => {
+  try {
+    const response = await instance.get("/transactions/get-list-transactions-with-order");
+    return response;
+  } catch (error) {
+    console.error("Error getting transactions with order:", error);
     throw error;
   }
 };

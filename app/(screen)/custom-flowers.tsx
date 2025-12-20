@@ -5,6 +5,7 @@ import {
   createCustomProduct,
   getProductsByType
 } from "@/services/product";
+import { Product } from "@/types";
 import { formatVND } from "@/utils/imageUtils";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -14,7 +15,9 @@ import {
   Alert,
   Dimensions,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -71,9 +74,7 @@ export default function ProductCustomImprovedUI() {
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
     null
   );
-  // API trả về cấu trúc sản phẩm khác với `Product` trong `types`,
-  // nên dùng any để tránh xung đột类型（hoặc có thể định nghĩa riêng interface nếu cần）。
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [customProducts, setCustomProducts] = useState<any[]>([]);
@@ -275,6 +276,13 @@ export default function ProductCustomImprovedUI() {
       return;
     }
 
+    // Validate Vietnamese phone number
+    const phoneRegex = /^(0)(3|5|7|8|9)[0-9]{8}$/;
+    if (!phoneRegex.test(orderForm.phoneNumber.trim())) {
+      setError("Số điện thoại không hợp lệ (phải là sốViệt Nam 10 chữ số)");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -404,774 +412,784 @@ export default function ProductCustomImprovedUI() {
     router.back();
   };
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.headerIconContainer}>
-            {currentStep === 1 ? (
-              <TouchableOpacity onPress={handleBack}>
-                <MaterialCommunityIcons
-                  name="arrow-left"
-                  size={24}
-                  color="#fff"
-                />
-              </TouchableOpacity>
-            ) : (
-              <MaterialCommunityIcons name="cart" size={24} color="#fff" />
-            )}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
+    >
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerIconContainer}>
+              {currentStep === 1 ? (
+                <TouchableOpacity onPress={handleBack}>
+                  <MaterialCommunityIcons
+                    name="arrow-left"
+                    size={24}
+                    color="#fff"
+                  />
+                </TouchableOpacity>
+              ) : (
+                <MaterialCommunityIcons name="cart" size={24} color="#fff" />
+              )}
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>
+                {currentStep === 1
+                  ? activeTab === "create"
+                    ? "Tạo Hoa Tùy Chỉnh"
+                    : "Chọn Sản Phẩm Có Sẵn"
+                  : "Thông Tin Đặt Hàng"}
+              </Text>
+              <Text style={styles.headerSubtitle}>
+                {currentStep === 1
+                  ? activeTab === "create"
+                    ? "Thiết kế bó hoa theo ý muốn"
+                    : "Chọn từ các mẫu đã tạo trước"
+                  : "Hoàn tất thông tin giao hàng"}
+              </Text>
+            </View>
           </View>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>
-              {currentStep === 1
-                ? activeTab === "create"
-                  ? "Tạo Hoa Tùy Chỉnh"
-                  : "Chọn Sản Phẩm Có Sẵn"
-                : "Thông Tin Đặt Hàng"}
-            </Text>
-            <Text style={styles.headerSubtitle}>
-              {currentStep === 1
-                ? activeTab === "create"
-                  ? "Thiết kế bó hoa theo ý muốn"
-                  : "Chọn từ các mẫu đã tạo trước"
-                : "Hoàn tất thông tin giao hàng"}
-            </Text>
-          </View>
+
+          {activeTab === "create" && (
+            <View style={styles.stepIndicator}>
+              <View
+                style={[
+                  styles.stepItem,
+                  currentStep === 1 && styles.stepItemActive,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.stepCircle,
+                    currentStep === 1 && styles.stepCircleActive,
+                  ]}
+                >
+                  {currentStep > 1 ? (
+                    <Feather name="check" size={16} color="#fff" />
+                  ) : (
+                    <Text style={styles.stepNumber}>1</Text>
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.stepText,
+                    currentStep === 1 && styles.stepTextActive,
+                  ]}
+                >
+                  Thiết kế
+                </Text>
+              </View>
+              <Feather
+                name="arrow-right"
+                size={20}
+                color="rgba(255,255,255,0.6)"
+              />
+              <View
+                style={[
+                  styles.stepItem,
+                  currentStep === 2 && styles.stepItemActive,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.stepCircle,
+                    currentStep === 2 && styles.stepCircleActive,
+                  ]}
+                >
+                  <Text style={styles.stepNumber}>2</Text>
+                </View>
+                <Text
+                  style={[
+                    styles.stepText,
+                    currentStep === 2 && styles.stepTextActive,
+                  ]}
+                >
+                  Đặt hàng
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
-        {activeTab === "create" && (
-          <View style={styles.stepIndicator}>
-            <View
-              style={[
-                styles.stepItem,
-                currentStep === 1 && styles.stepItemActive,
-              ]}
-            >
-              <View
-                style={[
-                  styles.stepCircle,
-                  currentStep === 1 && styles.stepCircleActive,
-                ]}
-              >
-                {currentStep > 1 ? (
-                  <Feather name="check" size={16} color="#fff" />
-                ) : (
-                  <Text style={styles.stepNumber}>1</Text>
-                )}
-              </View>
-              <Text
-                style={[
-                  styles.stepText,
-                  currentStep === 1 && styles.stepTextActive,
-                ]}
-              >
-                Thiết kế
-              </Text>
-            </View>
+        {/* Tabs */}
+        <View style={styles.tabs}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "create" && styles.tabActive]}
+            onPress={() => {
+              setActiveTab("create");
+              setCurrentStep(1);
+              setSelectedExistingProduct(null);
+            }}
+          >
             <Feather
-              name="arrow-right"
+              name="plus"
               size={20}
-              color="rgba(255,255,255,0.6)"
+              color={activeTab === "create" ? "#e11d48" : "#6b7280"}
             />
-            <View
+            <Text
               style={[
-                styles.stepItem,
-                currentStep === 2 && styles.stepItemActive,
+                styles.tabText,
+                activeTab === "create" && styles.tabTextActive,
               ]}
             >
-              <View
-                style={[
-                  styles.stepCircle,
-                  currentStep === 2 && styles.stepCircleActive,
-                ]}
-              >
-                <Text style={styles.stepNumber}>2</Text>
-              </View>
-              <Text
-                style={[
-                  styles.stepText,
-                  currentStep === 2 && styles.stepTextActive,
-                ]}
-              >
-                Đặt hàng
-              </Text>
-            </View>
-          </View>
-        )}
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "create" && styles.tabActive]}
-          onPress={() => {
-            setActiveTab("create");
-            setCurrentStep(1);
-            setSelectedExistingProduct(null);
-          }}
-        >
-          <Feather
-            name="plus"
-            size={20}
-            color={activeTab === "create" ? "#e11d48" : "#6b7280"}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "create" && styles.tabTextActive,
-            ]}
+              Tạo Mới
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "existing" && styles.tabActive]}
+            onPress={() => {
+              setActiveTab("existing");
+              setCurrentStep(1);
+              setCreatedProduct(null);
+            }}
           >
-            Tạo Mới
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "existing" && styles.tabActive]}
-          onPress={() => {
-            setActiveTab("existing");
-            setCurrentStep(1);
-            setCreatedProduct(null);
-          }}
-        >
-          <Feather
-            name="list"
-            size={20}
-            color={activeTab === "existing" ? "#e11d48" : "#6b7280"}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "existing" && styles.tabTextActive,
-            ]}
-          >
-            Có Sẵn
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        {currentStep === 1 && activeTab === "create" ? (
-          <View style={styles.form}>
-            {/* Info Box */}
-            <View style={styles.infoBox}>
-              <View style={styles.infoHeader}>
-                <MaterialCommunityIcons
-                  name="heart"
-                  size={18}
-                  color="#e11d48"
-                />
-                <Text style={styles.infoTitle}>Tạo hoa tùy chỉnh</Text>
-              </View>
-              <Text style={styles.infoText}>
-                Tạo một bó hoa độc đáo theo ý muốn của bạn với các loại hoa và
-                phụ kiện bạn chọn.
-              </Text>
-            </View>
-
-            {/* Name Input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>
-                Tên sản phẩm <Text style={styles.required}>*</Text>
-              </Text>
-              <TextInput
-                style={styles.input}
-                value={form.name}
-                onChangeText={(text) => setForm((s) => ({ ...s, name: text }))}
-                placeholder="Ví dụ: Bó hoa sinh nhật đặc biệt"
-                placeholderTextColor="#9ca3af"
-              />
-            </View>
-
-            {/* Description Input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Mô tả</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={form.description}
-                onChangeText={(text) =>
-                  setForm((s) => ({ ...s, description: text }))
-                }
-                placeholder="Mô tả chi tiết về sản phẩm của bạn..."
-                placeholderTextColor="#9ca3af"
-                multiline
-                numberOfLines={4}
-              />
-            </View>
-
-            {/* Compositions Section */}
-            <View style={styles.compositionSection}>
-              <Text style={styles.sectionTitle}>Thành phần sản phẩm</Text>
-
-              {/* Flower Selector */}
-              <View style={styles.selectorGroup}>
-                <View style={styles.selectorHeader}>
-                  <MaterialCommunityIcons
-                    name="flower"
-                    size={16}
-                    color="#e11d48"
-                  />
-                  <Text style={styles.selectorLabel}>HOA</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.selectorButton}
-                  onPress={() => setShowFlowerModal(true)}
-                >
-                  <Text style={styles.selectorButtonText}>
-                    {form.flowerSelections.length > 0
-                      ? `${form.flowerSelections.length} loại hoa đã chọn`
-                      : "Chọn hoa..."}
-                  </Text>
-                  <Feather name="plus" size={20} color="#e11d48" />
-                </TouchableOpacity>
-
-                {/* Selected Flowers */}
-                {form.flowerSelections.map((f) => {
-                  const firstImage =
-                    f.images?.[0] || "https://via.placeholder.com/60?text=Hoa";
-                  return (
-                    <View key={f.childId} style={styles.selectionItem}>
-                      <Image
-                        source={{ uri: firstImage }}
-                        style={styles.selectionImage}
-                      />
-                      <View style={styles.selectionInfo}>
-                        <Text style={styles.selectionName}>{f.name}</Text>
-                        {f.price && (
-                          <Text style={styles.selectionPrice}>
-                            {f.price.toLocaleString("vi-VN")}đ/bông
-                          </Text>
-                        )}
-                      </View>
-                      <TextInput
-                        style={styles.quantityInput}
-                        value={String(f.quantity)}
-                        onChangeText={(text) =>
-                          handleQuantityChange(
-                            "flower",
-                            f.childId,
-                            Number(text) || 1
-                          )
-                        }
-                        keyboardType="numeric"
-                      />
-                      <TouchableOpacity
-                        style={styles.removeButton}
-                        onPress={() =>
-                          handleSelect("flower", {
-                            id: f.childId,
-                            name: f.name,
-                            images: JSON.stringify(f.images),
-                          })
-                        }
-                      >
-                        <Feather name="x" size={18} color="#e11d48" />
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-              </View>
-
-              {/* Item Selector */}
-              <View style={styles.selectorGroup}>
-                <View style={styles.selectorHeader}>
-                  <MaterialCommunityIcons
-                    name="package-variant"
-                    size={16}
-                    color="#e11d48"
-                  />
-                  <Text style={styles.selectorLabel}>PHỤ KIỆN</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.selectorButton}
-                  onPress={() => setShowItemModal(true)}
-                >
-                  <Text style={styles.selectorButtonText}>
-                    {form.itemSelections.length > 0
-                      ? `${form.itemSelections.length} phụ kiện đã chọn`
-                      : "Chọn phụ kiện..."}
-                  </Text>
-                  <Feather name="plus" size={20} color="#e11d48" />
-                </TouchableOpacity>
-
-                {/* Selected Items */}
-                {form.itemSelections.map((it) => {
-                  const firstImage =
-                    it.images?.[0] ||
-                    "https://via.placeholder.com/60?text=Item";
-                  return (
-                    <View key={it.childId} style={styles.selectionItem}>
-                      <Image
-                        source={{ uri: firstImage }}
-                        style={styles.selectionImage}
-                      />
-                      <View style={styles.selectionInfo}>
-                        <Text style={styles.selectionName}>{it.name}</Text>
-                        {it.price && (
-                          <Text style={styles.selectionPrice}>
-                            {it.price.toLocaleString("vi-VN")}đ
-                          </Text>
-                        )}
-                      </View>
-                      <TextInput
-                        style={styles.quantityInput}
-                        value={String(it.quantity)}
-                        onChangeText={(text) =>
-                          handleQuantityChange(
-                            "item",
-                            it.childId,
-                            Number(text) || 1
-                          )
-                        }
-                        keyboardType="numeric"
-                      />
-                      <TouchableOpacity
-                        style={styles.removeButton}
-                        onPress={() =>
-                          handleSelect("item", {
-                            id: it.childId,
-                            name: it.name,
-                            images: JSON.stringify(it.images),
-                          })
-                        }
-                      >
-                        <Feather name="x" size={18} color="#e11d48" />
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Image Upload */}
-
-
-            {/* Error Message */}
-            {error && (
-              <View style={styles.errorBox}>
-                <Feather name="x" size={18} color="#dc2626" />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            {/* Submit Button */}
-            <TouchableOpacity
+            <Feather
+              name="list"
+              size={20}
+              color={activeTab === "existing" ? "#e11d48" : "#6b7280"}
+            />
+            <Text
               style={[
-                styles.submitButton,
-                loading && styles.submitButtonDisabled,
+                styles.tabText,
+                activeTab === "existing" && styles.tabTextActive,
               ]}
-              onPress={handleSubmitProduct}
-              disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Text style={styles.submitButtonText}>Tiếp Theo</Text>
-                  <Feather name="arrow-right" size={20} color="#fff" />
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        ) : currentStep === 1 && activeTab === "existing" ? (
-          <View style={styles.existingList}>
-            {customProducts.map((product: any) => {
-              const productImages = parseImages(product.images || "[]");
-              const firstImage =
-                productImages[0] || "https://via.placeholder.com/80?text=Hoa";
-              const totalPrice = calculateTotalPrice(product);
+              Có Sẵn
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-              return (
-                <TouchableOpacity
-                  key={product.id}
-                  style={styles.productCard}
-                  onPress={() => handleSelectExistingProduct(product)}
-                >
-                  <Image
-                    source={{ uri: firstImage }}
-                    style={styles.productImage}
+        {/* Content */}
+        <View style={styles.content}>
+          {currentStep === 1 && activeTab === "create" ? (
+            <View style={styles.form}>
+              {/* Info Box */}
+              <View style={styles.infoBox}>
+                <View style={styles.infoHeader}>
+                  <MaterialCommunityIcons
+                    name="heart"
+                    size={18}
+                    color="#e11d48"
                   />
-                  <View style={styles.productInfo}>
-                    <Text style={styles.productName}>{product.name}</Text>
-                    <Text style={styles.productDescription} numberOfLines={2}>
-                      {product.description}
-                    </Text>
-                    {totalPrice > 0 && (
-                      <Text style={styles.productPrice}>
-                        {totalPrice.toLocaleString("vi-VN")}đ
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ) : (
-          <View style={styles.form}>
-            {/* Product Preview */}
-            {(createdProduct || selectedExistingProduct) && (
-              <View style={styles.productPreview}>
-                <View style={styles.productPreviewHeader}>
-                  <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
-                  <Text style={styles.productPreviewTitle}>
-                    Sản phẩm đã chọn
-                  </Text>
+                  <Text style={styles.infoTitle}>Tạo hoa tùy chỉnh</Text>
                 </View>
-                {(() => {
-                  const product = createdProduct || selectedExistingProduct;
-                  const productImages = parseImages(product.images || "[]");
-                  const firstImage =
-                    productImages[0] ||
-                    "https://via.placeholder.com/128?text=Hoa";
-                  const totalPrice = calculateTotalPrice(product);
-
-                  return (
-                    <View style={styles.productPreviewContent}>
-                      <Image
-                        source={{ uri: firstImage }}
-                        style={styles.productPreviewImage}
-                      />
-                      <View style={styles.productPreviewInfo}>
-                        <Text style={styles.productPreviewName}>
-                          {product.name}
-                        </Text>
-                        <Text
-                          style={styles.productPreviewDescription}
-                          numberOfLines={2}
-                        >
-                          {product.description}
-                        </Text>
-                        {totalPrice > 0 && (
-                          <Text style={styles.productPreviewPrice}>
-                            Tổng giá: {totalPrice.toLocaleString("vi-VN")}đ
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                  );
-                })()}
-              </View>
-            )}
-
-            {/* Order Form */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>
-                  Địa chỉ giao hàng <Text style={styles.required}>*</Text>
+                <Text style={styles.infoText}>
+                  Tạo một bó hoa độc đáo theo ý muốn của bạn với các loại hoa và
+                  phụ kiện bạn chọn.
                 </Text>
-                <TouchableOpacity
-                  style={styles.addressButton}
-                  onPress={() => setShowAddressModal(true)}
-                >
-                  <Ionicons name="location-outline" size={14} color="#e11d48" />
-                  <Text style={styles.addressButtonText}>Chọn địa chỉ</Text>
-                </TouchableOpacity>
               </View>
 
-              {selectedAddressId && (
-                <View style={styles.selectedAddressBadge}>
-                  <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
-                  <Text style={styles.selectedAddressText}>
-                    Đã chọn địa chỉ có sẵn
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedAddressId(null);
-                      setOrderForm((prev) => ({
-                        ...prev,
-                        shippingAddress: "",
-                        phoneNumber: "",
-                      }));
-                    }}
-                  >
-                    <Text style={styles.selectedAddressRemove}>Xóa</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={orderForm.shippingAddress}
-                onChangeText={(text) => {
-                  setSelectedAddressId(null);
-                  setOrderForm((s) => ({ ...s, shippingAddress: text }));
-                }}
-                placeholder="Số 10 Hoàng Hoa Thám, Quận Tân Bình, TP.HCM"
-                placeholderTextColor="#9ca3af"
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            <View style={styles.inputRow}>
-              <View style={[styles.inputGroup, styles.inputHalf]}>
+              {/* Name Input */}
+              <View style={styles.inputGroup}>
                 <Text style={styles.label}>
-                  Số điện thoại <Text style={styles.required}>*</Text>
+                  Tên sản phẩm <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={styles.input}
-                  value={orderForm.phoneNumber}
-                  onChangeText={(text) => {
-                    setSelectedAddressId(null);
-                    setOrderForm((s) => ({ ...s, phoneNumber: text }));
-                  }}
-                  placeholder="0941720502"
+                  value={form.name}
+                  onChangeText={(text) => setForm((s) => ({ ...s, name: text }))}
+                  placeholder="Ví dụ: Bó hoa sinh nhật đặc biệt"
                   placeholderTextColor="#9ca3af"
-                  keyboardType="phone-pad"
                 />
               </View>
 
-              <View style={[styles.inputGroup, styles.inputHalf]}>
-                <Text style={styles.label}>
-                  Số lượng <Text style={styles.required}>*</Text>
-                </Text>
+              {/* Description Input */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Mô tả</Text>
                 <TextInput
-                  style={styles.input}
-                  value={String(orderForm.quantity)}
+                  style={[styles.input, styles.textArea]}
+                  value={form.description}
                   onChangeText={(text) =>
-                    setOrderForm((s) => ({ ...s, quantity: Number(text) || 1 }))
+                    setForm((s) => ({ ...s, description: text }))
                   }
-                  placeholder="1"
+                  placeholder="Mô tả chi tiết về sản phẩm của bạn..."
                   placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
+                  multiline
+                  numberOfLines={4}
                 />
               </View>
-            </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Ghi chú</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={orderForm.note}
-                onChangeText={(text) =>
-                  setOrderForm((s) => ({ ...s, note: text }))
-                }
-                placeholder="Giao hàng cẩn thận giúp tôi nhé..."
-                placeholderTextColor="#9ca3af"
-                multiline
-                numberOfLines={3}
-              />
-            </View>
+              {/* Compositions Section */}
+              <View style={styles.compositionSection}>
+                <Text style={styles.sectionTitle}>Thành phần sản phẩm</Text>
 
-            {/* Error Message */}
-            {error && (
-              <View style={styles.errorBox}>
-                <Feather name="x" size={18} color="#dc2626" />
-                <Text style={styles.errorText}>{error}</Text>
+                {/* Flower Selector */}
+                <View style={styles.selectorGroup}>
+                  <View style={styles.selectorHeader}>
+                    <MaterialCommunityIcons
+                      name="flower"
+                      size={16}
+                      color="#e11d48"
+                    />
+                    <Text style={styles.selectorLabel}>HOA</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.selectorButton}
+                    onPress={() => setShowFlowerModal(true)}
+                  >
+                    <Text style={styles.selectorButtonText}>
+                      {form.flowerSelections.length > 0
+                        ? `${form.flowerSelections.length} loại hoa đã chọn`
+                        : "Chọn hoa..."}
+                    </Text>
+                    <Feather name="plus" size={20} color="#e11d48" />
+                  </TouchableOpacity>
+
+                  {/* Selected Flowers */}
+                  {form.flowerSelections.map((f) => {
+                    const firstImage =
+                      f.images?.[0] || "https://via.placeholder.com/60?text=Hoa";
+                    return (
+                      <View key={f.childId} style={styles.selectionItem}>
+                        <Image
+                          source={{ uri: firstImage }}
+                          style={styles.selectionImage}
+                        />
+                        <View style={styles.selectionInfo}>
+                          <Text style={styles.selectionName}>{f.name}</Text>
+                          {f.price && (
+                            <Text style={styles.selectionPrice}>
+                              {f.price.toLocaleString("vi-VN")}đ/bông
+                            </Text>
+                          )}
+                        </View>
+                        <TextInput
+                          style={styles.quantityInput}
+                          value={String(f.quantity)}
+                          onChangeText={(text) =>
+                            handleQuantityChange(
+                              "flower",
+                              f.childId,
+                              Number(text) || 1
+                            )
+                          }
+                          keyboardType="numeric"
+                        />
+                        <TouchableOpacity
+                          style={styles.removeButton}
+                          onPress={() =>
+                            handleSelect("flower", {
+                              id: f.childId,
+                              name: f.name,
+                              images: JSON.stringify(f.images),
+                            })
+                          }
+                        >
+                          <Feather name="x" size={18} color="#e11d48" />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* Item Selector */}
+                <View style={styles.selectorGroup}>
+                  <View style={styles.selectorHeader}>
+                    <MaterialCommunityIcons
+                      name="package-variant"
+                      size={16}
+                      color="#e11d48"
+                    />
+                    <Text style={styles.selectorLabel}>PHỤ KIỆN</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.selectorButton}
+                    onPress={() => setShowItemModal(true)}
+                  >
+                    <Text style={styles.selectorButtonText}>
+                      {form.itemSelections.length > 0
+                        ? `${form.itemSelections.length} phụ kiện đã chọn`
+                        : "Chọn phụ kiện..."}
+                    </Text>
+                    <Feather name="plus" size={20} color="#e11d48" />
+                  </TouchableOpacity>
+
+                  {/* Selected Items */}
+                  {form.itemSelections.map((it) => {
+                    const firstImage =
+                      it.images?.[0] ||
+                      "https://via.placeholder.com/60?text=Item";
+                    return (
+                      <View key={it.childId} style={styles.selectionItem}>
+                        <Image
+                          source={{ uri: firstImage }}
+                          style={styles.selectionImage}
+                        />
+                        <View style={styles.selectionInfo}>
+                          <Text style={styles.selectionName}>{it.name}</Text>
+                          {it.price && (
+                            <Text style={styles.selectionPrice}>
+                              {it.price.toLocaleString("vi-VN")}đ
+                            </Text>
+                          )}
+                        </View>
+                        <TextInput
+                          style={styles.quantityInput}
+                          value={String(it.quantity)}
+                          onChangeText={(text) =>
+                            handleQuantityChange(
+                              "item",
+                              it.childId,
+                              Number(text) || 1
+                            )
+                          }
+                          keyboardType="numeric"
+                        />
+                        <TouchableOpacity
+                          style={styles.removeButton}
+                          onPress={() =>
+                            handleSelect("item", {
+                              id: it.childId,
+                              name: it.name,
+                              images: JSON.stringify(it.images),
+                            })
+                          }
+                        >
+                          <Feather name="x" size={18} color="#e11d48" />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
-            )}
 
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => {
-                  setCurrentStep(1);
-                  setSelectedExistingProduct(null);
-                  setSelectedAddressId(null);
-                }}
-              >
-                <Feather name="arrow-left" size={20} color="#e11d48" />
-                <Text style={styles.backButtonText}>Quay lại</Text>
-              </TouchableOpacity>
+              {/* Image Upload */}
 
+
+              {/* Error Message */}
+              {error && (
+                <View style={styles.errorBox}>
+                  <Feather name="x" size={18} color="#dc2626" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              )}
+
+              {/* Submit Button */}
               <TouchableOpacity
                 style={[
-                  styles.orderButton,
+                  styles.submitButton,
                   loading && styles.submitButtonDisabled,
                 ]}
-                onPress={handleSubmitOrder}
+                onPress={handleSubmitProduct}
                 disabled={loading}
               >
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <MaterialCommunityIcons
-                      name="cart"
-                      size={20}
-                      color="#fff"
-                    />
-                    <Text style={styles.orderButtonText}>Đặt Hàng</Text>
+                    <Text style={styles.submitButtonText}>Tiếp Theo</Text>
+                    <Feather name="arrow-right" size={20} color="#fff" />
                   </>
                 )}
               </TouchableOpacity>
             </View>
-          </View>
-        )}
-      </View>
-
-      {/* Flower Selection Modal */}
-      <Modal visible={showFlowerModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Chọn loại hoa</Text>
-              <TouchableOpacity onPress={() => setShowFlowerModal(false)}>
-                <Feather name="x" size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalList}>
-              {products?.map((flower) => {
-                const flowerImages = parseImages(flower.images || "[]");
-                const firstImage = flowerImages[0];
-                const isSelected = form.flowerSelections.some(
-                  (s) => s.childId === flower.id
-                );
-                return (
-                  <TouchableOpacity
-                    key={flower.id}
-                    style={[
-                      styles.modalItem,
-                      isSelected && styles.modalItemSelected,
-                    ]}
-                    onPress={() =>
-                      handleSelect("flower", {
-                        id: flower.id,
-                        name: flower.name,
-                        images: flower.images,
-                        price: flower.price,
-                      })
-                    }
-                  >
-                    <Image
-                      source={{ uri: firstImage }}
-                      style={styles.modalItemImage}
-                    />
-                    <View style={styles.modalItemInfo}>
-                      <Text style={styles.modalItemText}>{flower.name}</Text>
-                      <Text style={styles.modalItemPrice}>
-                        {formatVND(Number(flower.price))}/bông
-                      </Text>
-                    </View>
-                    {isSelected && (
-                      <View style={styles.selectedBadge}>
-                        <Feather name="check" size={16} color="#fff" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Item Selection Modal */}
-      <Modal visible={showItemModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Chọn phụ kiện</Text>
-              <TouchableOpacity onPress={() => setShowItemModal(false)}>
-                <Feather name="x" size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalList}>
-              {items.map((item: any) => {
-                const itemImages = parseImages(item.images || "[]");
+          ) : currentStep === 1 && activeTab === "existing" ? (
+            <View style={styles.existingList}>
+              {customProducts.map((product: any) => {
+                const productImages = parseImages(product.images || "[]");
                 const firstImage =
-                  itemImages[0] || "https://via.placeholder.com/40?text=Item";
-                const isSelected = form.itemSelections.some(
-                  (s) => s.childId === item.id
-                );
+                  productImages[0] || "https://via.placeholder.com/80?text=Hoa";
+                const totalPrice = calculateTotalPrice(product);
 
                 return (
                   <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.modalItem,
-                      isSelected && styles.modalItemSelected,
-                    ]}
-                    onPress={() =>
-                      handleSelect("item", {
-                        id: item.id,
-                        name: item.name,
-                        images: item.images,
-                        price: item.price,
-                      })
-                    }
+                    key={product.id}
+                    style={styles.productCard}
+                    onPress={() => handleSelectExistingProduct(product)}
                   >
                     <Image
                       source={{ uri: firstImage }}
-                      style={styles.modalItemImage}
+                      style={styles.productImage}
                     />
-                    <View style={styles.modalItemInfo}>
-                      <Text style={styles.modalItemText}>{item.name}</Text>
-                      <Text style={styles.modalItemPrice}>
-                        {item.price.toLocaleString("vi-VN")}đ
+                    <View style={styles.productInfo}>
+                      <Text style={styles.productName}>{product.name}</Text>
+                      <Text style={styles.productDescription} numberOfLines={2}>
+                        {product.description}
                       </Text>
+                      {totalPrice > 0 && (
+                        <Text style={styles.productPrice}>
+                          {totalPrice.toLocaleString("vi-VN")}đ
+                        </Text>
+                      )}
                     </View>
-                    {isSelected && (
-                      <View style={styles.selectedBadge}>
-                        <Feather name="check" size={16} color="#fff" />
-                      </View>
-                    )}
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Address Selection Modal */}
-      <Modal visible={showAddressModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Chọn địa chỉ giao hàng</Text>
-              <TouchableOpacity onPress={() => setShowAddressModal(false)}>
-                <Feather name="x" size={24} color="#374151" />
-              </TouchableOpacity>
             </View>
-            <ScrollView style={styles.modalList}>
-              {addresses.map((address: any) => (
-                <TouchableOpacity
-                  key={address.id}
-                  style={styles.addressItem}
-                  onPress={() => handleSelectAddress(address)}
-                >
-                  <View style={styles.addressItemHeader}>
-                    {selectedAddressId === address.id && (
-                      <Feather
-                        name="check"
-                        size={20}
-                        color="#e11d48"
-                        style={{ marginRight: 8 }}
-                      />
-                    )}
-                    <Text style={styles.addressItemName}>
-                      {address.recipientName}
+          ) : (
+            <View style={styles.form}>
+              {/* Product Preview */}
+              {(createdProduct || selectedExistingProduct) && (
+                <View style={styles.productPreview}>
+                  <View style={styles.productPreviewHeader}>
+                    <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
+                    <Text style={styles.productPreviewTitle}>
+                      Sản phẩm đã chọn
                     </Text>
-                    {address.default && (
-                      <View style={styles.defaultBadge}>
-                        <Text style={styles.defaultBadgeText}>Mặc định</Text>
+                  </View>
+                  {(() => {
+                    const product = createdProduct || selectedExistingProduct;
+                    const productImages = parseImages(product.images || "[]");
+                    const firstImage =
+                      productImages[0] ||
+                      "https://via.placeholder.com/128?text=Hoa";
+                    const totalPrice = calculateTotalPrice(product);
+
+                    return (
+                      <View style={styles.productPreviewContent}>
+                        <Image
+                          source={{ uri: firstImage }}
+                          style={styles.productPreviewImage}
+                        />
+                        <View style={styles.productPreviewInfo}>
+                          <Text style={styles.productPreviewName}>
+                            {product.name}
+                          </Text>
+                          <Text
+                            style={styles.productPreviewDescription}
+                            numberOfLines={2}
+                          >
+                            {product.description}
+                          </Text>
+                          {totalPrice > 0 && (
+                            <Text style={styles.productPreviewPrice}>
+                              Tổng giá: {totalPrice.toLocaleString("vi-VN")}đ
+                            </Text>
+                          )}
+                        </View>
                       </View>
-                    )}
-                  </View>
-                  <View style={styles.addressItemRow}>
-                    <Ionicons
-                      name="location-outline"
-                      size={14}
-                      color="#6b7280"
-                    />
-                    <Text style={styles.addressItemText}>
-                      {address.address}
+                    );
+                  })()}
+                </View>
+              )}
+
+              {/* Order Form */}
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>
+                    Địa chỉ giao hàng <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.addressButton}
+                    onPress={() => setShowAddressModal(true)}
+                  >
+                    <Ionicons name="location-outline" size={14} color="#e11d48" />
+                    <Text style={styles.addressButtonText}>Chọn địa chỉ</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {selectedAddressId && (
+                  <View style={styles.selectedAddressBadge}>
+                    <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
+                    <Text style={styles.selectedAddressText}>
+                      Đã chọn địa chỉ có sẵn
                     </Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedAddressId(null);
+                        setOrderForm((prev) => ({
+                          ...prev,
+                          shippingAddress: "",
+                          phoneNumber: "",
+                        }));
+                      }}
+                    >
+                      <Text style={styles.selectedAddressRemove}>Xóa</Text>
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.addressItemRow}>
-                    <Feather name="phone" size={14} color="#6b7280" />
-                    <Text style={styles.addressItemText}>
-                      {address.phoneNumber}
-                    </Text>
-                  </View>
+                )}
+
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={orderForm.shippingAddress}
+                  onChangeText={(text) => {
+                    setSelectedAddressId(null);
+                    setOrderForm((s) => ({ ...s, shippingAddress: text }));
+                  }}
+                  placeholder="Số 10 Hoàng Hoa Thám, Quận Tân Bình, TP.HCM"
+                  placeholderTextColor="#9ca3af"
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+
+              <View style={styles.inputRow}>
+                <View style={[styles.inputGroup, styles.inputHalf]}>
+                  <Text style={styles.label}>
+                    Số điện thoại <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={orderForm.phoneNumber}
+                    onChangeText={(text) => {
+                      setSelectedAddressId(null);
+                      setOrderForm((s) => ({ ...s, phoneNumber: text }));
+                    }}
+                    placeholder="0941720502"
+                    placeholderTextColor="#9ca3af"
+                    keyboardType="phone-pad"
+                  />
+                </View>
+
+                <View style={[styles.inputGroup, styles.inputHalf]}>
+                  <Text style={styles.label}>
+                    Số lượng <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={String(orderForm.quantity)}
+                    onChangeText={(text) =>
+                      setOrderForm((s) => ({ ...s, quantity: Number(text) || 1 }))
+                    }
+                    placeholder="1"
+                    placeholderTextColor="#9ca3af"
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Ghi chú</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={orderForm.note}
+                  onChangeText={(text) =>
+                    setOrderForm((s) => ({ ...s, note: text }))
+                  }
+                  placeholder="Giao hàng cẩn thận giúp tôi nhé..."
+                  placeholderTextColor="#9ca3af"
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+
+              {/* Error Message */}
+              {error && (
+                <View style={styles.errorBox}>
+                  <Feather name="x" size={18} color="#dc2626" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              )}
+
+              {/* Action Buttons */}
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => {
+                    setCurrentStep(1);
+                    setSelectedExistingProduct(null);
+                    setSelectedAddressId(null);
+                  }}
+                >
+                  <Feather name="arrow-left" size={20} color="#e11d48" />
+                  <Text style={styles.backButtonText}>Quay lại</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.orderButton,
+                    loading && styles.submitButtonDisabled,
+                  ]}
+                  onPress={handleSubmitOrder}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons
+                        name="cart"
+                        size={20}
+                        color="#fff"
+                      />
+                      <Text style={styles.orderButtonText}>Đặt Hàng</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
-      </Modal>
-    </ScrollView>
+
+        {/* Flower Selection Modal */}
+        <Modal visible={showFlowerModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Chọn loại hoa</Text>
+                <TouchableOpacity onPress={() => setShowFlowerModal(false)}>
+                  <Feather name="x" size={24} color="#374151" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalList}>
+                {products?.map((flower) => {
+                  const flowerImages = parseImages(flower.images || "[]");
+                  const firstImage = flowerImages[0];
+                  const isSelected = form.flowerSelections.some(
+                    (s) => s.childId === flower.id
+                  );
+                  return (
+                    <TouchableOpacity
+                      key={flower.id}
+                      style={[
+                        styles.modalItem,
+                        isSelected && styles.modalItemSelected,
+                      ]}
+                      onPress={() =>
+                        handleSelect("flower", {
+                          id: flower.id,
+                          name: flower.name,
+                          images: flower.images,
+                          price: flower.price,
+                        })
+                      }
+                    >
+                      <Image
+                        source={{ uri: firstImage }}
+                        style={styles.modalItemImage}
+                      />
+                      <View style={styles.modalItemInfo}>
+                        <Text style={styles.modalItemText}>{flower.name}</Text>
+                        <Text style={styles.modalItemPrice}>
+                          {formatVND(Number(flower.price))}/bông
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <View style={styles.selectedBadge}>
+                          <Feather name="check" size={16} color="#fff" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Item Selection Modal */}
+        <Modal visible={showItemModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Chọn phụ kiện</Text>
+                <TouchableOpacity onPress={() => setShowItemModal(false)}>
+                  <Feather name="x" size={24} color="#374151" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalList}>
+                {items.map((item: any) => {
+                  const itemImages = parseImages(item.images || "[]");
+                  const firstImage =
+                    itemImages[0] || "https://via.placeholder.com/40?text=Item";
+                  const isSelected = form.itemSelections.some(
+                    (s) => s.childId === item.id
+                  );
+
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.modalItem,
+                        isSelected && styles.modalItemSelected,
+                      ]}
+                      onPress={() =>
+                        handleSelect("item", {
+                          id: item.id,
+                          name: item.name,
+                          images: item.images,
+                          price: item.price,
+                        })
+                      }
+                    >
+                      <Image
+                        source={{ uri: firstImage }}
+                        style={styles.modalItemImage}
+                      />
+                      <View style={styles.modalItemInfo}>
+                        <Text style={styles.modalItemText}>{item.name}</Text>
+                        <Text style={styles.modalItemPrice}>
+                          {item.price.toLocaleString("vi-VN")}đ
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <View style={styles.selectedBadge}>
+                          <Feather name="check" size={16} color="#fff" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Address Selection Modal */}
+        <Modal visible={showAddressModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Chọn địa chỉ giao hàng</Text>
+                <TouchableOpacity onPress={() => setShowAddressModal(false)}>
+                  <Feather name="x" size={24} color="#374151" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalList}>
+                {addresses.map((address: any) => (
+                  <TouchableOpacity
+                    key={address.id}
+                    style={styles.addressItem}
+                    onPress={() => handleSelectAddress(address)}
+                  >
+                    <View style={styles.addressItemHeader}>
+                      {selectedAddressId === address.id && (
+                        <Feather
+                          name="check"
+                          size={20}
+                          color="#e11d48"
+                          style={{ marginRight: 8 }}
+                        />
+                      )}
+                      <Text style={styles.addressItemName}>
+                        {address.recipientName}
+                      </Text>
+                      {address.default && (
+                        <View style={styles.defaultBadge}>
+                          <Text style={styles.defaultBadgeText}>Mặc định</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.addressItemRow}>
+                      <Ionicons
+                        name="location-outline"
+                        size={14}
+                        color="#6b7280"
+                      />
+                      <Text style={styles.addressItemText}>
+                        {address.address}
+                      </Text>
+                    </View>
+                    <View style={styles.addressItemRow}>
+                      <Feather name="phone" size={14} color="#6b7280" />
+                      <Text style={styles.addressItemText}>
+                        {address.phoneNumber}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

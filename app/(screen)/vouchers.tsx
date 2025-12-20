@@ -44,25 +44,17 @@ export default function VouchersScreen() {
     );
 
     const categorizeVouchers = () => {
-        const now = new Date();
         const all = vouchers;
         const active: Voucher[] = [];
         const expired: Voucher[] = [];
 
         vouchers.forEach((voucher) => {
-            const startsAt = new Date(voucher.startsAt);
-            const endsAt = new Date(voucher.endsAt);
-
-            if (
-                voucher.usageLimit &&
-                voucher.usedCount >= voucher.usageLimit
-            ) {
-                expired.push(voucher);
-            } else if (now < startsAt || now > endsAt) {
-                expired.push(voucher);
-            } else {
+            if (voucher.status === "ACTIVE") {
                 active.push(voucher);
+            } else if (voucher.status === "EXPIRED" || voucher.status === "USED") {
+                expired.push(voucher);
             }
+            // NOT_STARTED vouchers will show in "all" but not in active/expired
         });
 
         return { all, active, expired };

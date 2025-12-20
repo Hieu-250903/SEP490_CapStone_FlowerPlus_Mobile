@@ -51,6 +51,13 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
+        name="(screen)/favorites"
+        options={{
+          title: "Sản phẩm yêu thích",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="(screen)/custom-flowers"
         options={{
           title: "Lịch sử thanh toán",

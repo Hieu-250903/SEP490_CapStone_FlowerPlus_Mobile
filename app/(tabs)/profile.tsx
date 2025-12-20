@@ -20,7 +20,7 @@ export default function ProfileScreen() {
   const fetchUserData = async () => {
     try {
       const userData = await userProfileApi();
-      if (userData && userData?.data && userData?.data?.success) {
+      if (userData && userData?.success && userData?.data) {
         setUser(userData.data);
       } else {
         authService.clearAuth();
@@ -164,6 +164,16 @@ export default function ProfileScreen() {
               subtitle="Hoa custom"
               onPress={() => {
                 router.push("/(screen)/custom-flowers");
+              }}
+            />
+          </View>
+          <View style={styles.menuSection}>
+            <MenuItem
+              icon="heart-outline"
+              title="Sản phẩm yêu thích"
+              subtitle="Danh sách yêu thích của tôi"
+              onPress={() => {
+                router.push("/(screen)/favorites");
               }}
             />
           </View>

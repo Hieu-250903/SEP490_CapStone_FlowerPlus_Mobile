@@ -3,7 +3,7 @@ import { getAllCategories } from "@/services/categories";
 import { getAllProduct } from "@/services/product";
 import { Category, Product } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -28,6 +28,10 @@ export default function ProductsScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showSortModal, setShowSortModal] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+
+  // Temporary state for filter modal
+  const [tempCategory, setTempCategory] = useState<string | null>(null);
+  const [tempPriceRange, setTempPriceRange] = useState<PriceRange>("all");
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,7 +73,14 @@ export default function ProductsScreen() {
         if (pageNumber === 1) {
           setProducts(res.data.listObjects);
         } else {
-          setProducts((prev) => [...prev, ...res.data.listObjects]);
+          // Filter out duplicates when appending
+          setProducts((prev) => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const newProducts = res.data.listObjects.filter(
+              (product: any) => !existingIds.has(product.id)
+            );
+            return [...prev, ...newProducts];
+          });
         }
         setHasNext(res.data.hasNext);
         setTotalRecords(res.data.totalRecords);
@@ -124,7 +135,7 @@ export default function ProductsScreen() {
 
     if (priceRange !== "all") {
       filtered = filtered.filter((p) => {
-        const price = p.discountedPrice || p.originalPrice;
+        const price = p.discountPrice || p.price;
         switch (priceRange) {
           case "0-300":
             return price < 300000;
@@ -143,16 +154,12 @@ export default function ProductsScreen() {
     switch (sortBy) {
       case "price-asc":
         filtered.sort(
-          (a, b) =>
-            (a.discountedPrice || a.originalPrice) -
-            (b.discountedPrice || b.originalPrice)
+          (a, b) => (a.discountPrice || a.price) - (b.discountPrice || b.price)
         );
         break;
       case "price-desc":
         filtered.sort(
-          (a, b) =>
-            (b.discountedPrice || b.originalPrice) -
-            (a.discountedPrice || a.originalPrice)
+          (a, b) => (b.discountPrice || b.price) - (a.discountPrice || a.price)
         );
         break;
       case "name":
@@ -166,7 +173,10 @@ export default function ProductsScreen() {
     return filtered;
   };
 
-  const filteredProducts = getFilteredProducts();
+  const filteredProducts = useMemo(() => {
+    return getFilteredProducts();
+  }, [products, searchQuery, priceRange, sortBy]);
+
   const activeFiltersCount = [
     selectedCategory ? 1 : 0,
     priceRange !== "all" ? 1 : 0,
@@ -218,7 +228,11 @@ export default function ProductsScreen() {
               styles.filterButton,
               activeFiltersCount > 0 && styles.filterButtonActive,
             ]}
-            onPress={() => setShowFilterModal(true)}
+            onPress={() => {
+              setTempCategory(selectedCategory);
+              setTempPriceRange(priceRange);
+              setShowFilterModal(true);
+            }}
           >
             <Ionicons
               name="filter"
@@ -320,19 +334,18 @@ export default function ProductsScreen() {
                     !selectedCategory && styles.filterOptionActive,
                   ]}
                   onPress={() => {
-                    setSelectedCategory(null);
-                    setPageNumber(1);
+                    setTempCategory(null);
                   }}
                 >
                   <Text
                     style={[
                       styles.filterOptionText,
-                      !selectedCategory && styles.filterOptionTextActive,
+                      !tempCategory && styles.filterOptionTextActive,
                     ]}
                   >
                     Tất cả
                   </Text>
-                  {!selectedCategory && (
+                  {!tempCategory && (
                     <Ionicons name="checkmark" size={20} color="#047857" />
                   )}
                 </TouchableOpacity>
@@ -341,24 +354,23 @@ export default function ProductsScreen() {
                     key={cat.id}
                     style={[
                       styles.filterOption,
-                      selectedCategory === cat.name &&
+                      tempCategory === cat.name &&
                       styles.filterOptionActive,
                     ]}
                     onPress={() => {
-                      setSelectedCategory(cat.name);
-                      setPageNumber(1);
+                      setTempCategory(cat.name);
                     }}
                   >
                     <Text
                       style={[
                         styles.filterOptionText,
-                        selectedCategory === cat.name &&
+                        tempCategory === cat.name &&
                         styles.filterOptionTextActive,
                       ]}
                     >
                       {cat.name}
                     </Text>
-                    {selectedCategory === cat.name && (
+                    {tempCategory === cat.name && (
                       <Ionicons name="checkmark" size={20} color="#047857" />
                     )}
                   </TouchableOpacity>
@@ -372,20 +384,20 @@ export default function ProductsScreen() {
                     key={range.value}
                     style={[
                       styles.filterOption,
-                      priceRange === range.value && styles.filterOptionActive,
+                      tempPriceRange === range.value && styles.filterOptionActive,
                     ]}
-                    onPress={() => setPriceRange(range.value as PriceRange)}
+                    onPress={() => setTempPriceRange(range.value as PriceRange)}
                   >
                     <Text
                       style={[
                         styles.filterOptionText,
-                        priceRange === range.value &&
+                        tempPriceRange === range.value &&
                         styles.filterOptionTextActive,
                       ]}
                     >
                       {range.label}
                     </Text>
-                    {priceRange === range.value && (
+                    {tempPriceRange === range.value && (
                       <Ionicons name="checkmark" size={20} color="#047857" />
                     )}
                   </TouchableOpacity>
@@ -402,7 +414,12 @@ export default function ProductsScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.applyButton}
-                onPress={() => setShowFilterModal(false)}
+                onPress={() => {
+                  setSelectedCategory(tempCategory);
+                  setPriceRange(tempPriceRange);
+                  setPageNumber(1);
+                  setShowFilterModal(false);
+                }}
               >
                 <Text style={styles.applyButtonText}>Áp dụng</Text>
               </TouchableOpacity>

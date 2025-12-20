@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Product } from "@/types";
+import { Product } from "../../types";
 
 interface ProductCardProps {
   product: Product;
@@ -21,48 +21,21 @@ interface ProductCardProps {
 export default function ProductCard({ product, onPress }: ProductCardProps) {
   const router = useRouter();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [imageError, setImageError] = useState(false);
-
-  // Default placeholder image - 使用 HTTPS 和可靠的占位符服务
-  const DEFAULT_IMAGE = "https://via.placeholder.com/400x400/EF4444/FFFFFF?text=FlowerPlus";
 
   // Parse images from JSON string and get the first image
   const getProductImage = () => {
     try {
-      if (product.image && typeof product.image === "string") {
-        // Nếu image là JSON array string: ["url1","url2"]
-        if (product.image.startsWith("[")) {
-          const imageArray = JSON.parse(product.image);
-          const imageUrl = imageArray[0];
-          if (imageUrl && typeof imageUrl === "string" && imageUrl.startsWith("http")) {
-            return imageUrl;
-          }
-        }
-
-        // Nếu image là URL trực tiếp
-        if (product.image.startsWith("http")) {
-          return product.image;
-        }
+      if (product.images) {
+        const imageArray = JSON.parse(product.images);
+        return imageArray[0] || "https://via.placeholder.com/400";
       }
-      if (product.image && typeof product.image === "string" && product.image.startsWith("http")) {
-        return product.image;
-      }
-      return DEFAULT_IMAGE;
+      return product.image || "https://via.placeholder.com/400";
     } catch (error) {
-      console.log("[ProductCard] Error parsing images:", error);
-      if (product.image && typeof product.image === "string" && product.image.startsWith("http")) {
-        return product.image;
-      }
-      return DEFAULT_IMAGE;
+      return product.image || "https://via.placeholder.com/400";
     }
   };
 
   const productImage = getProductImage();
-
-  const handleImageError = () => {
-    console.log("[ProductCard] Image load error for:", productImage);
-    setImageError(true);
-  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -91,7 +64,7 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
         quantity: 1,
       });
 
-      if (response?.data?.success) {
+      if (response?.success) {
         Alert.alert("Thành công", "Đã thêm sản phẩm vào giỏ hàng", [
           { text: "OK" },
         ]);
@@ -108,13 +81,10 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
   };
 
   const hasDiscount =
-    typeof product.discountedPrice === "number" &&
-    product.discountedPrice < product.originalPrice;
+    product.discountPrice && product.discountPrice < product.price;
   const discountPercent = hasDiscount
     ? Math.round(
-        ((product.originalPrice - product.discountedPrice) /
-          product.originalPrice) *
-          100
+        ((product.price - product.discountPrice) / product.price) * 100
       )
     : 0;
 
@@ -126,14 +96,9 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
     >
       <View style={styles.imageContainer}>
         <Image
-          source={{ 
-            uri: imageError ? DEFAULT_IMAGE : productImage,
-            cache: "force-cache" // 强制缓存以提高生产构建性能
-          }}
+          source={{ uri: productImage }}
           style={styles.image}
           resizeMode="cover"
-          onError={handleImageError}
-          defaultSource={{ uri: DEFAULT_IMAGE }} // iOS fallback
         />
 
         {discountPercent > 0 && (
@@ -178,16 +143,10 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
 
         <View style={styles.priceContainer}>
           {hasDiscount && (
-            <Text style={styles.price}>
-              {formatPrice(product.originalPrice)}
-            </Text>
+            <Text style={styles.price}>{formatPrice(product.price)}</Text>
           )}
           <Text style={styles.discountedPrice}>
-            {formatPrice(
-              hasDiscount
-                ? (product.discountedPrice as number)
-                : product.originalPrice
-            )}
+            {formatPrice(product.discountPrice || product.price)}
           </Text>
         </View>
       </View>
