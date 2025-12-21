@@ -6,8 +6,10 @@ import {
   getProductsByType
 } from "@/services/product";
 import { Product } from "@/types";
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { formatVND } from "@/utils/imageUtils";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -56,13 +58,17 @@ export default function ProductCustomImprovedUI() {
       images?: string[];
       price?: number;
     }[],
+    uploadedImages: [] as string[],
   });
 
   const [orderForm, setOrderForm] = useState({
+    recipientName: "",
     shippingAddress: "",
     phoneNumber: "",
     note: "",
     quantity: 1,
+    requestDeliveryTime: "",
+    deliveryDate: null as Date | null,
   });
 
   const [loading, setLoading] = useState(false);
@@ -71,6 +77,7 @@ export default function ProductCustomImprovedUI() {
   const [showFlowerModal, setShowFlowerModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
     null
   );
@@ -185,6 +192,7 @@ export default function ProductCustomImprovedUI() {
     setSelectedAddressId(address.id);
     setOrderForm((prev) => ({
       ...prev,
+      recipientName: address.recipientName || "",
       shippingAddress: address.address,
       phoneNumber: address.phoneNumber,
     }));
@@ -241,7 +249,7 @@ export default function ProductCustomImprovedUI() {
       const response = await createCustomProduct({
         name: form.name,
         description: form.description,
-        images: [],
+        images: form.uploadedImages,
         compositions,
       });
 
@@ -267,6 +275,10 @@ export default function ProductCustomImprovedUI() {
   const handleSubmitOrder = async () => {
     setError("");
 
+    if (!orderForm.recipientName.trim()) {
+      setError("Vui lòng nhập tên người nhận");
+      return;
+    }
     if (!orderForm.shippingAddress.trim()) {
       setError("Vui lòng nhập địa chỉ giao hàng");
       return;
@@ -313,8 +325,8 @@ export default function ProductCustomImprovedUI() {
         note: orderForm.note,
         productId: product.id,
         quantity: orderForm.quantity,
-        recipientName: "",
-        requestDeliveryTime: "",
+        recipientName: orderForm.recipientName,
+        requestDeliveryTime: orderForm.deliveryDate ? orderForm.deliveryDate.toISOString() : null,
         shippingAddress: orderForm.shippingAddress,
         userId: addresses.find((address) => address.id === selectedAddressId)?.userId,
       });
@@ -337,12 +349,16 @@ export default function ProductCustomImprovedUI() {
 
                   flowerSelections: [],
                   itemSelections: [],
+                  uploadedImages: [],
                 });
                 setOrderForm({
+                  recipientName: "",
                   shippingAddress: "",
                   phoneNumber: "",
                   note: "",
                   quantity: 1,
+                  requestDeliveryTime: "",
+                  deliveryDate: null,
                 });
               },
             },
@@ -760,6 +776,68 @@ export default function ProductCustomImprovedUI() {
               </View>
 
               {/* Image Upload */}
+              <View style={styles.uploadSection}>
+                <Text style={styles.sectionTitle}>Hình ảnh sản phẩm</Text>
+                <Text style={styles.uploadDescription}>
+                  Tải lên hình ảnh mẫu cho sản phẩm của bạn (tùy chọn)
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={async () => {
+                    const result = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                      allowsMultipleSelection: true,
+                      quality: 0.8,
+                      aspect: [4, 3],
+                    });
+
+                    if (!result.canceled && result.assets) {
+                      const newImages = result.assets.map(asset => asset.uri);
+                      setForm(prev => ({
+                        ...prev,
+                        uploadedImages: [...prev.uploadedImages, ...newImages],
+                      }));
+                    }
+                  }}
+                >
+                  <Ionicons name="cloud-upload-outline" size={24} color="#e11d48" />
+                  <Text style={styles.uploadButtonText}>
+                    {form.uploadedImages.length > 0
+                      ? `Đã chọn ${form.uploadedImages.length} ảnh`
+                      : "Chọn ảnh từ thư viện"}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Image Preview */}
+                {form.uploadedImages.length > 0 && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.imagePreviewContainer}
+                  >
+                    {form.uploadedImages.map((uri, index) => (
+                      <View key={index} style={styles.imagePreviewWrapper}>
+                        <Image
+                          source={{ uri }}
+                          style={styles.imagePreview}
+                        />
+                        <TouchableOpacity
+                          style={styles.removeImageButton}
+                          onPress={() => {
+                            setForm(prev => ({
+                              ...prev,
+                              uploadedImages: prev.uploadedImages.filter((_, i) => i !== index),
+                            }));
+                          }}
+                        >
+                          <Ionicons name="close-circle" size={24} color="#ef4444" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
 
 
               {/* Error Message */}
@@ -862,6 +940,20 @@ export default function ProductCustomImprovedUI() {
                               Tổng giá: {totalPrice.toLocaleString("vi-VN")}đ
                             </Text>
                           )}
+                          {product.compositions && product.compositions.length > 0 && (
+                            <View style={styles.compositionPreview}>
+                              <Text style={styles.compositionTitle}>Thành phần:</Text>
+                              <View style={styles.compositionList}>
+                                {product.compositions.map((comp: any) => (
+                                  <View key={comp.childId || comp.childProductId} style={styles.compositionBadge}>
+                                    <Text style={styles.compositionText}>
+                                      {comp.childName} x{comp.quantity}
+                                    </Text>
+                                  </View>
+                                ))}
+                              </View>
+                            </View>
+                          )}
                         </View>
                       </View>
                     );
@@ -870,6 +962,22 @@ export default function ProductCustomImprovedUI() {
               )}
 
               {/* Order Form */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Tên người nhận <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={orderForm.recipientName}
+                  onChangeText={(text) => {
+                    setSelectedAddressId(null);
+                    setOrderForm((s) => ({ ...s, recipientName: text }));
+                  }}
+                  placeholder="Nguyễn Văn A"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+
               <View style={styles.inputGroup}>
                 <View style={styles.labelRow}>
                   <Text style={styles.label}>
@@ -953,6 +1061,40 @@ export default function ProductCustomImprovedUI() {
                   />
                 </View>
               </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Thời gian giao hàng mong muốn
+                </Text>
+                <TouchableOpacity
+                  style={styles.dateTimeButton}
+                  onPress={() => setShowDateTimePicker(true)}
+                >
+                  <Ionicons name="calendar-outline" size={20} color="#e11d48" />
+                  <Text style={styles.dateTimeButtonText}>
+                    {orderForm.deliveryDate
+                      ? `${orderForm.deliveryDate.toLocaleDateString('vi-VN')} ${orderForm.deliveryDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
+                      : "Chọn ngày và giờ giao hàng"}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
+                </TouchableOpacity>
+              </View>
+
+              <DateTimePickerModal
+                isVisible={showDateTimePicker}
+                mode="datetime"
+                onConfirm={(date) => {
+                  setOrderForm((prev) => ({
+                    ...prev,
+                    deliveryDate: date
+                  }));
+                  setShowDateTimePicker(false);
+                }}
+                onCancel={() => setShowDateTimePicker(false)}
+                minimumDate={new Date()}
+                locale="vi_VN"
+                is24Hour={true}
+              />
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Ghi chú</Text>
@@ -1376,6 +1518,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#1f2937",
   },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#fecdd3",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  inputInner: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1f2937",
+    paddingVertical: 12,
+  },
+  dateTimeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#fecdd3",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  dateTimeButtonText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1f2937",
+  },
   textArea: {
     height: 100,
     textAlignVertical: "top",
@@ -1781,5 +1955,85 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: "#6b7280",
+  },
+  uploadSection: {
+    marginBottom: 24,
+  },
+  uploadDescription: {
+    fontSize: 13,
+    color: "#6b7280",
+    marginBottom: 12,
+  },
+  uploadButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fef2f2",
+    borderWidth: 2,
+    borderColor: "#e11d48",
+    borderStyle: "dashed",
+    borderRadius: 12,
+    padding: 20,
+    gap: 12,
+  },
+  uploadButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#e11d48",
+  },
+  imagePreviewContainer: {
+    marginTop: 16,
+  },
+  imagePreviewWrapper: {
+    position: "relative",
+    marginRight: 12,
+  },
+  imagePreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    backgroundColor: "#f3f4f6",
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  compositionPreview: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "#fef2f2",
+    borderRadius: 8,
+  },
+  compositionTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#991b1b",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  compositionList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  compositionBadge: {
+    backgroundColor: "#fee2e2",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  compositionText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#991b1b",
   },
 });

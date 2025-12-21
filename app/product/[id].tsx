@@ -36,6 +36,7 @@ export default function ProductDetailScreen() {
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -57,12 +58,23 @@ export default function ProductDetailScreen() {
   useEffect(() => {
     const fetchFavoriteStatus = async () => {
       try {
+        console.log("Checking favorite status for product:", id);
         const response = await checkFavoriteStatus(Number(id));
+        console.log("Favorite status response:", response);
         if (response?.success && response?.data !== undefined) {
-          setIsFavorite(response.data);
+          // API returns {favorited: boolean, productId: number}, need to extract favorited
+          const isFav = typeof response.data === 'boolean'
+            ? response.data
+            : response.data?.favorited || false;
+          console.log("Setting isFavorite to:", isFav);
+          setIsFavorite(isFav);
+        } else {
+          console.log("Invalid response or data, setting to false");
+          setIsFavorite(false);
         }
       } catch (error) {
         console.error("Error checking favorite status:", error);
+        setIsFavorite(false);
       }
     };
     if (id) {
@@ -74,12 +86,13 @@ export default function ProductDetailScreen() {
     try {
       const response = await addToCart({
         productId: product.id,
-        quantity: 1,
+        quantity: quantity,
       });
       if (response?.success) {
-        Alert.alert("Thành công", "Đã thêm sản phẩm vào giỏ hàng", [
+        Alert.alert("Thành công", `Đã thêm ${quantity} sản phẩm vào giỏ hàng`, [
           { text: "OK" },
         ]);
+        setQuantity(1); // Reset quantity after adding
       }
     } catch (error: any) {
       Alert.alert(
@@ -252,6 +265,16 @@ export default function ProductDetailScreen() {
 
           <Text style={styles.productTitle}>{product.name}</Text>
 
+          {/* Rating */}
+          <View style={styles.ratingContainer}>
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Ionicons key={star} name="star" size={16} color="#FBBF24" />
+              ))}
+            </View>
+            <Text style={styles.ratingText}>(128 đánh giá)</Text>
+          </View>
+
           <View style={styles.badges}>
             <View style={styles.newBadge}>
               <Text style={styles.newBadgeText}>New 100%</Text>
@@ -277,6 +300,31 @@ export default function ProductDetailScreen() {
             <Text style={styles.currentPrice}>{formatVND(product.price)}</Text>
             <Text style={styles.priceNote}>
               Giá đã bao gồm giấy gói & thiệp viết tay theo yêu cầu
+            </Text>
+          </View>
+
+          {/* Quantity Selector */}
+          <View style={styles.quantityCard}>
+            <View style={styles.quantityRow}>
+              <Text style={styles.quantityLabel}>Số lượng</Text>
+              <View style={styles.quantitySelector}>
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                >
+                  <Ionicons name="remove" size={20} color="#1F2937" />
+                </TouchableOpacity>
+                <Text style={styles.quantityValue}>{quantity}</Text>
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={() => setQuantity(quantity + 1)}
+                >
+                  <Ionicons name="add" size={20} color="#1F2937" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <Text style={styles.quantityTotal}>
+              Tổng: {formatVND(product.price * quantity)}
             </Text>
           </View>
 
@@ -344,6 +392,155 @@ export default function ProductDetailScreen() {
               })}
             </View>
           )}
+
+          {/* Description Tabs */}
+          <View style={styles.tabsContainer}>
+            <View style={styles.tabsList}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === "desc" && styles.tabActive]}
+                onPress={() => setActiveTab("desc")}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "desc" && styles.tabTextActive,
+                  ]}
+                >
+                  Mô tả
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === "policy" && styles.tabActive]}
+                onPress={() => setActiveTab("policy")}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "policy" && styles.tabTextActive,
+                  ]}
+                >
+                  Chính sách
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === "shipping" && styles.tabActive]}
+                onPress={() => setActiveTab("shipping")}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "shipping" && styles.tabTextActive,
+                  ]}
+                >
+                  Vận chuyển
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.tabContent}>
+              {activeTab === "desc" && (
+                <View>
+                  <Text style={styles.tabContentText}>{product.description}</Text>
+                  <View style={styles.bulletList}>
+                    <View style={styles.bulletItem}>
+                      <View style={styles.bullet} />
+                      <Text style={styles.bulletText}>
+                        Hoa tươi 100%, được cắm theo đơn đặt hàng
+                      </Text>
+                    </View>
+                    <View style={styles.bulletItem}>
+                      <View style={styles.bullet} />
+                      <Text style={styles.bulletText}>
+                        Thiết kế bởi đội ngũ florist chuyên nghiệp
+                      </Text>
+                    </View>
+                    <View style={styles.bulletItem}>
+                      <View style={styles.bullet} />
+                      <Text style={styles.bulletText}>
+                        Đi kèm thiệp viết tay theo yêu cầu
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {activeTab === "policy" && (
+                <View>
+                  <Text style={[styles.tabContentText, styles.boldText]}>
+                    Chính sách đổi trả:
+                  </Text>
+                  <View style={styles.bulletList}>
+                    <View style={styles.bulletItem}>
+                      <View style={styles.bullet} />
+                      <Text style={styles.bulletText}>
+                        <Text style={styles.boldText}>Đổi miễn phí</Text> trong vòng 24h nếu hoa bị héo
+                      </Text>
+                    </View>
+                    <View style={styles.bulletItem}>
+                      <View style={styles.bullet} />
+                      <Text style={styles.bulletText}>
+                        Hoàn tiền 100% nếu sản phẩm không đúng mô tả
+                      </Text>
+                    </View>
+                    <View style={styles.bulletItem}>
+                      <View style={styles.bullet} />
+                      <Text style={styles.bulletText}>
+                        Hỗ trợ khách hàng 24/7 qua hotline và Zalo
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.tabContentText, styles.noteText, { marginTop: 12 }]}>
+                    Lưu ý: Hoa tươi là sản phẩm đặc biệt, vui lòng kiểm tra kỹ trước khi nhận hàng
+                  </Text>
+                </View>
+              )}
+
+              {activeTab === "shipping" && (
+                <View>
+                  <Text style={[styles.tabContentText, styles.boldText]}>
+                    Thời gian giao hàng:
+                  </Text>
+                  <View style={styles.bulletList}>
+                    <View style={styles.bulletItem}>
+                      <View style={styles.bullet} />
+                      <Text style={styles.bulletText}>
+                        <Text style={styles.boldText}>Nội thành TP.HCM:</Text> 2-4 giờ
+                      </Text>
+                    </View>
+                    <View style={styles.bulletItem}>
+                      <View style={styles.bullet} />
+                      <Text style={styles.bulletText}>
+                        <Text style={styles.boldText}>Ngoại thành TP.HCM:</Text> 4-6 giờ
+                      </Text>
+                    </View>
+                    <View style={styles.bulletItem}>
+                      <View style={styles.bullet} />
+                      <Text style={styles.bulletText}>
+                        <Text style={styles.boldText}>Tỉnh thành khác:</Text> 1-2 ngày
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.tabContentText, styles.boldText, { marginTop: 16 }]}>
+                    Phí vận chuyển:
+                  </Text>
+                  <View style={styles.bulletList}>
+                    <View style={styles.bulletItem}>
+                      <View style={styles.bullet} />
+                      <Text style={styles.bulletText}>
+                        <Text style={styles.boldText}>Miễn phí</Text> cho đơn hàng trên 500.000đ
+                      </Text>
+                    </View>
+                    <View style={styles.bulletItem}>
+                      <View style={styles.bullet} />
+                      <Text style={styles.bulletText}>
+                        30.000đ cho đơn hàng dưới 500.000đ (nội thành TP.HCM)
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
         </View>
 
         <View style={{ height: 100 }} />
@@ -749,6 +946,67 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#6B7280",
     lineHeight: 20,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 8,
+  },
+  starsContainer: {
+    flexDirection: "row",
+    gap: 2,
+  },
+  ratingText: {
+    fontSize: 13,
+    color: "#6B7280",
+  },
+  quantityCard: {
+    backgroundColor: "#FFF",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  quantityRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  quantityLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  quantitySelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  quantityButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF",
+  },
+  quantityValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    minWidth: 30,
+    textAlign: "center",
+  },
+  quantityTotal: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#059669",
+    textAlign: "right",
   },
   relatedSection: {
     marginTop: 24,

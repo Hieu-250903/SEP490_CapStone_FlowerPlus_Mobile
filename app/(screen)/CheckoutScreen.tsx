@@ -6,6 +6,7 @@ import { formatVND } from "@/utils/imageUtils";
 import { Ionicons } from "@expo/vector-icons";
 import { getVouchers, Voucher, calculateDiscount } from "@/services/voucher";
 import VoucherCard from "@/components/VoucherCard";
+import AddressSelector from "@/components/AddressSelector";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -58,6 +59,9 @@ export default function CheckoutScreen() {
     province: "",
     district: "",
     ward: "",
+    provinceCode: null as number | null,
+    districtCode: null as number | null,
+    wardCode: null as number | null,
     default: false,
   });
   const [isCreatingAddress, setIsCreatingAddress] = useState(false);
@@ -318,6 +322,9 @@ export default function CheckoutScreen() {
           province: "",
           district: "",
           ward: "",
+          provinceCode: null,
+          districtCode: null,
+          wardCode: null,
           default: false,
         });
         const res = await userProfileApi();
@@ -731,35 +738,17 @@ export default function CheckoutScreen() {
                 />
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Tỉnh/Thành phố *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="VD: TP. Hồ Chí Minh"
-                  value={newAddress.province}
-                  onChangeText={(text) => setNewAddress({ ...newAddress, province: text })}
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Quận/Huyện *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="VD: Quận 1"
-                  value={newAddress.district}
-                  onChangeText={(text) => setNewAddress({ ...newAddress, district: text })}
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Phường/Xã *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="VD: Phường Bến Nghé"
-                  value={newAddress.ward}
-                  onChangeText={(text) => setNewAddress({ ...newAddress, ward: text })}
-                />
-              </View>
+              <AddressSelector
+                onProvinceChange={(code, name) =>
+                  setNewAddress({ ...newAddress, provinceCode: code, province: name })
+                }
+                onDistrictChange={(code, name) =>
+                  setNewAddress({ ...newAddress, districtCode: code, district: name })
+                }
+                onWardChange={(code, name) =>
+                  setNewAddress({ ...newAddress, wardCode: code, ward: name })
+                }
+              />
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Địa chỉ cụ thể *</Text>

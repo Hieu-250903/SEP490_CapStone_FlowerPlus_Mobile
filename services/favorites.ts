@@ -60,8 +60,11 @@ export const checkFavoriteStatus = async (
         const response = await instance.get(
             `/favorites/check/${productId}`
         );
+        console.log("Check favorite response:", response);
         return response;
     } catch (error: any) {
+        console.error("Error checking favorite status:", error);
+        return { success: false, data: false };
     }
 };
 
