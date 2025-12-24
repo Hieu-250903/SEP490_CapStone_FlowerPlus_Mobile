@@ -16,7 +16,7 @@ export const userRegisterApi = async (userData: RegisterData) => {
 };
 
 export const verifyEmailApi = async (data: {
-  email: string;
+  verificationToken: string;
   verificationCode: string;
 }) => {
   try {

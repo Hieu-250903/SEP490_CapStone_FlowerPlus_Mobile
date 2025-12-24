@@ -18,8 +18,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { verifyEmailApi } from "../../services/auth";
 
 export default function VerifyEmailScreen() {
-    const { email } = useLocalSearchParams<{
-        email?: string;
+    const { verificationToken } = useLocalSearchParams<{
+        verificationToken?: string;
     }>();
 
     const [verificationCode, setVerificationCode] = useState("");
@@ -37,15 +37,15 @@ export default function VerifyEmailScreen() {
             return;
         }
 
-        if (!email) {
-            Alert.alert("Lỗi", "Không tìm thấy email");
+        if (!verificationToken) {
+            Alert.alert("Lỗi", "Không tìm thấy token xác thực");
             return;
         }
 
         setIsLoading(true);
         try {
             const res = await verifyEmailApi({
-                email: email,
+                verificationToken: verificationToken,
                 verificationCode: verificationCode,
             });
 

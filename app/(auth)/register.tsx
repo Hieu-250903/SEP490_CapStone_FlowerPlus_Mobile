@@ -94,18 +94,15 @@ export default function RegisterScreen() {
         address: address.trim(),
         age: age ? parseInt(age) : 0,
       });
+      console.log('Register response:', JSON.stringify(res, null, 2));
       if (res.success) {
         Alert.alert(
           'Đăng ký thành công!',
-          'Chúng tôi đã gửi mã xác thực 6 chữ số đến email của bạn. Vui lòng kiểm tra hộp thư và nhập mã để hoàn tất đăng ký.',
+          'Tài khoản của bạn đã được tạo. Vui lòng đăng nhập để tiếp tục.',
           [
             {
-              text: 'Xác thực ngay',
-              onPress: () =>
-                router.replace({
-                  pathname: '/(auth)/verify-email',
-                  params: { email: email.trim() },
-                }),
+              text: 'Đăng nhập',
+              onPress: () => router.replace('/(auth)/login'),
             },
           ],
           { cancelable: false }
