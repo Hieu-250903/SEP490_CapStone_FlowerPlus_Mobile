@@ -28,8 +28,17 @@ instance.interceptors.response.use(
 
     if (status === 401 || status === 403) {
       await AsyncStorage.multiRemove(["auth_token", "user_data"]);
+      try {
+        const currentPath = router.canGoBack() ? "" : "auth";
+        const requestUrl = error?.config?.url || "";
+        const isAuthRequest = requestUrl.includes("/auth/login") ||
+          requestUrl.includes("/auth/register");
 
-      router.replace("/(auth)/login");
+        if (!isAuthRequest) {
+          router.replace("/(auth)/login");
+        }
+      } catch (e) {
+      }
     }
 
     return Promise.reject(error);
