@@ -1,13 +1,11 @@
-import { userProfileApi, authService } from "@/services/auth";
+import AddressSelector from "@/components/AddressSelector";
+import VoucherCard from "@/components/VoucherCard";
+import { userProfileApi } from "@/services/auth";
 import { checkoutOrder } from "@/services/order";
-import { createOrUpdateAddress } from "@/services/address";
+import { calculateDiscount, getVouchers, Voucher } from "@/services/voucher";
 import { addressDelivery } from "@/types";
 import { formatVND } from "@/utils/imageUtils";
 import { Ionicons } from "@expo/vector-icons";
-import { getVouchers, Voucher, calculateDiscount } from "@/services/voucher";
-import VoucherCard from "@/components/VoucherCard";
-import AddressSelector from "@/components/AddressSelector";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -23,6 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
@@ -44,13 +43,11 @@ export default function CheckoutScreen() {
   const [deliveryDate, setDeliveryDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Voucher states
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
   const [showVoucherList, setShowVoucherList] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
 
-  // Create address states
   const [showCreateAddressModal, setShowCreateAddressModal] = useState(false);
   const [newAddress, setNewAddress] = useState({
     address: "",
@@ -300,52 +297,38 @@ export default function CheckoutScreen() {
       return;
     }
 
-    setIsCreatingAddress(true);
-    try {
-      const userId = await authService.getUserId();
-      if (!userId) {
-        Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng");
-        setIsCreatingAddress(false);
-        return;
-      }
-      const response = await createOrUpdateAddress({
-        ...newAddress,
-        userId,
-      });
-      if (response?.success || response?.data) {
-        Alert.alert("Thành công", "Đã tạo địa chỉ mới");
-        setShowCreateAddressModal(false);
-        setNewAddress({
-          address: "",
-          recipientName: "",
-          phoneNumber: "",
-          province: "",
-          district: "",
-          ward: "",
-          provinceCode: null,
-          districtCode: null,
-          wardCode: null,
-          default: false,
-        });
-        const res = await userProfileApi();
-        if (res.success) {
-          setAddressList(res.data.deliveryAddresses || []);
-          if (newAddress.default || res.data.deliveryAddresses.length === 1) {
-            const newAddr = res.data.deliveryAddresses.find(
-              (addr: addressDelivery) => addr.recipientName === newAddress.recipientName
-            );
-            if (newAddr) setSelectedAddress(newAddr);
-          }
-        }
-      }
-    } catch (error: any) {
-      Alert.alert(
-        "Lỗi",
-        error?.response?.data?.message || "Không thể tạo địa chỉ"
-      );
-    } finally {
-      setIsCreatingAddress(false);
-    }
+    // Tạo địa chỉ tạm để sử dụng cho đơn hàng (không lưu vào backend)
+    const tempAddress: addressDelivery = {
+      id: Date.now(), // ID tạm
+      recipientName: newAddress.recipientName,
+      phoneNumber: newAddress.phoneNumber,
+      address: newAddress.address,
+      province: newAddress.province,
+      district: newAddress.district,
+      ward: newAddress.ward,
+      default: false,
+      userId: 0,
+    };
+
+    // Sử dụng địa chỉ vừa nhập cho đơn hàng
+    setSelectedAddress(tempAddress);
+    setShowCreateAddressModal(false);
+
+    // Reset form
+    setNewAddress({
+      address: "",
+      recipientName: "",
+      phoneNumber: "",
+      province: "",
+      district: "",
+      ward: "",
+      provinceCode: null,
+      districtCode: null,
+      wardCode: null,
+      default: false,
+    });
+
+    Alert.alert("Thành công", "Đã sử dụng địa chỉ cho đơn hàng");
   };
 
   return (
