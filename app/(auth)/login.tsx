@@ -18,13 +18,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("");
+  const [userName, setUserName] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!userName || !password) {
       Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin");
       return;
     }
@@ -32,14 +32,13 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       const res = await userLoginApi({
-        email: email.trim(),
+        email: userName.trim(),
         password: password,
       });
-      if (res.success && res.data) {
-        await authService.saveAuth(res.data.accessToken);
-        const decodeData = await authService.decodeToken(
-          res.data.accessToken
-        );
+      const accessToken = res.data?.accessToken || res.accessToken;
+      if (accessToken) {
+        await authService.saveAuth(accessToken);
+        const decodeData = await authService.decodeToken(accessToken);
         if (decodeData.role === "DELIVERY_PERSON") {
           Alert.alert("Thành công", res.message || "Đăng nhập thành công", [
             {
@@ -91,16 +90,15 @@ export default function LoginScreen() {
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email hoặc Số điện thoại</Text>
+              <Text style={styles.label}>Tên đăng nhập</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color="#9CA3AF" />
+                <Ionicons name="person-outline" size={20} color="#9CA3AF" />
                 <TextInput
                   style={styles.input}
-                  placeholder="Nhập email hoặc số điện thoại"
+                  placeholder="Nhập tên đăng nhập"
                   placeholderTextColor="#9CA3AF"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
+                  value={userName}
+                  onChangeText={setUserName}
                   autoCapitalize="none"
                 />
               </View>

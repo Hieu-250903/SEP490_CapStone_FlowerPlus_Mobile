@@ -39,10 +39,12 @@ export const userLoginApi = async (credentials: {
   password: string;
 }): Promise<LoginResponse> => {
   try {
-    const response = await instance.post("/auth/login", {
+    const requestData = {
       username: credentials.email,
       password: credentials.password,
-    });
+    };
+    console.log("Login request data:", requestData);
+    const response = await instance.post("/auth/login", requestData);
     return response;
   } catch (error) {
     throw error;
@@ -52,6 +54,38 @@ export const userLoginApi = async (credentials: {
 export const userProfileApi = async () => {
   try {
     const response = await instance.get("/auth/me?includeRole=false");
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export interface UpdateProfileData {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  birthDate?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  avatar?: string;
+}
+
+export const updateProfileApi = async (data: UpdateProfileData) => {
+  try {
+    const response = await instance.post("/auth/update-profile", data);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const changePasswordApi = async (data: {
+  oldPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}) => {
+  try {
+    const response = await instance.post("/auth/change-password", data);
     return response;
   } catch (error) {
     throw error;

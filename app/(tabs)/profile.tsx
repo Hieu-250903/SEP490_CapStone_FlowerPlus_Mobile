@@ -190,6 +190,16 @@ export default function ProfileScreen() {
               }}
             />
           </View>
+          <View style={styles.menuSection}>
+            <MenuItem
+              icon="wallet-outline"
+              title="Yêu cầu hoàn tiền"
+              subtitle="Theo dõi các yêu cầu hoàn tiền"
+              onPress={() => {
+                router.push("/(screen)/refund-requests");
+              }}
+            />
+          </View>
         </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Lịch sử giao dịch</Text>

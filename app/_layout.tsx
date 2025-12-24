@@ -99,6 +99,13 @@ export default function RootLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="(screen)/refund-requests"
+        options={{
+          title: "Yêu cầu hoàn tiền",
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

@@ -120,9 +120,11 @@ export const getOrderByCode = async (orderCode: string) => {
   }
 };
 
-export const cancelOrder = async (orderId: number) => {
+export const cancelOrder = async (orderId: number, reason: string) => {
   try {
-    const response = await instance.post(`/orders/${orderId}/cancel`);
+    const response = await instance.post(`/orders/${orderId}/cancel`, {
+      reason
+    });
     return response;
   } catch (error) {
     console.error("Error canceling order:", error);
@@ -172,6 +174,16 @@ export const updateOrderStatus = async (orderId: number, formData: {
     throw error;
   }
 };
+export const getMyRefundRequests = async () => {
+  try {
+    const response = await instance.get("/orders/my-refund-requests");
+    return response;
+  } catch (error) {
+    console.error("Error getting refund requests:", error);
+    throw error;
+  }
+};
+
 export default {
   checkoutOrder,
   webhookPayos,
@@ -181,4 +193,5 @@ export default {
   cancelOrder,
   getListOrdersByShipper,
   updateOrderStatus,
+  getMyRefundRequests,
 };

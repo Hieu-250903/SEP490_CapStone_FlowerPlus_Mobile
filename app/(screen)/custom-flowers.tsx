@@ -937,7 +937,7 @@ export default function ProductCustomImprovedUI() {
                           </Text>
                           {totalPrice > 0 && (
                             <Text style={styles.productPreviewPrice}>
-                              Tổng giá dự kiến: {totalPrice.toLocaleString("vi-VN")}đ
+                              Tổng giá: {totalPrice.toLocaleString("vi-VN")}đ
                             </Text>
                           )}
                           {product.compositions && product.compositions.length > 0 && (
@@ -1027,39 +1027,37 @@ export default function ProductCustomImprovedUI() {
                 />
               </View>
 
-              <View style={styles.inputRow}>
-                <View style={[styles.inputGroup, styles.inputHalf]}>
-                  <Text style={styles.label}>
-                    Số điện thoại <Text style={styles.required}>*</Text>
-                  </Text>
-                  <TextInput
-                    style={styles.input}
-                    value={orderForm.phoneNumber}
-                    onChangeText={(text) => {
-                      setSelectedAddressId(null);
-                      setOrderForm((s) => ({ ...s, phoneNumber: text }));
-                    }}
-                    placeholder="0941720502"
-                    placeholderTextColor="#9ca3af"
-                    keyboardType="phone-pad"
-                  />
-                </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Số điện thoại <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={orderForm.phoneNumber}
+                  onChangeText={(text) => {
+                    setSelectedAddressId(null);
+                    setOrderForm((s) => ({ ...s, phoneNumber: text }));
+                  }}
+                  placeholder="0941720502"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="phone-pad"
+                />
+              </View>
 
-                <View style={[styles.inputGroup, styles.inputHalf]}>
-                  <Text style={styles.label}>
-                    Số lượng <Text style={styles.required}>*</Text>
-                  </Text>
-                  <TextInput
-                    style={styles.input}
-                    value={String(orderForm.quantity)}
-                    onChangeText={(text) =>
-                      setOrderForm((s) => ({ ...s, quantity: Number(text) || 1 }))
-                    }
-                    placeholder="1"
-                    placeholderTextColor="#9ca3af"
-                    keyboardType="numeric"
-                  />
-                </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Số lượng <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={String(orderForm.quantity)}
+                  onChangeText={(text) =>
+                    setOrderForm((s) => ({ ...s, quantity: Number(text) || 1 }))
+                  }
+                  placeholder="1"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="numeric"
+                />
               </View>
 
               <View style={styles.inputGroup}>

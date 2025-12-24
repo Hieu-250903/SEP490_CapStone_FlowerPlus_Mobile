@@ -1,4 +1,6 @@
 import { getOrders, cancelOrder, type Order } from "@/services/order";
+import { getProductDetail } from "@/services/product";
+import { forceHttps } from "@/utils/imageUtils";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -7,7 +9,9 @@ import {
   Alert,
   FlatList,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -95,6 +99,13 @@ const OrdersHistory = () => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [showProductModal, setShowProductModal] = useState(false);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
+
+  // Cancel order states
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [orderToCancel, setOrderToCancel] = useState<{ id: number; code: string } | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const itemsPerPage = 5;
 
@@ -232,27 +243,55 @@ const OrdersHistory = () => {
 
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
 
-  const handleCancelOrder = async (orderId: number, orderCode: string) => {
-    Alert.alert(
-      'Xác nhận hủy đơn',
-      `Bạn có chắc muốn hủy đơn hàng #${orderCode}?`,
-      [
-        { text: 'Không', style: 'cancel' },
-        {
-          text: 'Hủy đơn',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await cancelOrder(orderId);
-              Alert.alert('Thành công', 'Đã hủy đơn hàng');
-              fetchOrders(true);
-            } catch (error) {
-              Alert.alert('Lỗi', 'Không thể hủy đơn hàng');
-            }
-          },
-        },
-      ]
-    );
+  const handleProductClick = async (productId: number) => {
+    try {
+      setIsLoadingProduct(true);
+      setShowProductModal(true);
+      const response = await getProductDetail(productId);
+      if (response?.data) {
+        setSelectedProduct(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      Alert.alert('Lỗi', 'Không thể tải thông tin sản phẩm');
+      setShowProductModal(false);
+    } finally {
+      setIsLoadingProduct(false);
+    }
+  };
+
+  const handleCancelOrder = (orderId: number, orderCode: string) => {
+    setOrderToCancel({ id: orderId, code: orderCode });
+    setCancelReason('');
+    setShowCancelModal(true);
+  };
+
+  const handleSubmitCancel = async () => {
+    if (!orderToCancel) return;
+    if (!cancelReason.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập lý do hủy đơn hàng');
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      await cancelOrder(orderToCancel.id, cancelReason.trim());
+      Alert.alert(
+        'Thành công',
+        'Đơn hàng đã được hủy. Yêu cầu hoàn tiền sẽ được tạo tự động.'
+      );
+      setShowCancelModal(false);
+      setCancelReason('');
+      setOrderToCancel(null);
+      fetchOrders(true);
+    } catch (error: any) {
+      Alert.alert(
+        'Lỗi',
+        error?.response?.data?.message || 'Không thể hủy đơn hàng. Vui lòng thử lại.'
+      );
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   const renderFilterTabs = () => {
@@ -459,7 +498,7 @@ const OrdersHistory = () => {
                                 onPress={() => setZoomedImage(item.data.imageUrl)}
                               >
                                 <Image
-                                  source={{ uri: item.data.imageUrl }}
+                                  source={{ uri: forceHttps(item.data.imageUrl) }}
                                   style={styles.timelineImageThumb}
                                   resizeMode="cover"
                                 />
@@ -496,11 +535,16 @@ const OrdersHistory = () => {
                   const mainImage = images[0];
 
                   return (
-                    <View key={item.id} style={styles.productItem}>
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.productItem}
+                      onPress={() => handleProductClick(item.productId)}
+                      activeOpacity={0.7}
+                    >
                       <View style={styles.productImage}>
                         {mainImage ? (
                           <Image
-                            source={{ uri: mainImage }}
+                            source={{ uri: forceHttps(mainImage) }}
                             style={styles.productImageThumb}
                             resizeMode="cover"
                           />
@@ -509,7 +553,13 @@ const OrdersHistory = () => {
                         )}
                       </View>
                       <View style={styles.productInfo}>
-                        <Text style={styles.productName}>{item.productName}</Text>
+                        <View style={styles.productNameRow}>
+                          <Text style={styles.productName} numberOfLines={1}>{item.productName}</Text>
+                          <View style={styles.viewDetailBadge}>
+                            <Ionicons name="eye-outline" size={12} color="#047857" />
+                            <Text style={styles.viewDetailText}>Chi tiết</Text>
+                          </View>
+                        </View>
                         <View style={styles.productMeta}>
                           <Text style={styles.productQuantity}>SL: {item.quantity}</Text>
                           <Text style={styles.productDot}>•</Text>
@@ -520,7 +570,7 @@ const OrdersHistory = () => {
                         <Text style={styles.productTotalLabel}>Thành tiền</Text>
                         <Text style={styles.productTotalPrice}>{formatVND(item.lineTotal)}</Text>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -680,6 +730,277 @@ const OrdersHistory = () => {
         </View>
       )}
 
+      {/* Product Detail Modal */}
+      <Modal
+        visible={showProductModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setShowProductModal(false);
+          setSelectedProduct(null);
+        }}
+      >
+        <View style={styles.productModalContainer}>
+          <View style={styles.productModalContent}>
+            {/* Header */}
+            <View style={styles.productModalHeader}>
+              <Text style={styles.productModalTitle}>Chi tiết sản phẩm</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowProductModal(false);
+                  setSelectedProduct(null);
+                }}
+                style={styles.productModalCloseBtn}
+              >
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+
+            {isLoadingProduct ? (
+              <View style={styles.productModalLoading}>
+                <ActivityIndicator size="large" color="#047857" />
+                <Text style={styles.productModalLoadingText}>Đang tải...</Text>
+              </View>
+            ) : selectedProduct ? (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Product Image */}
+                {(() => {
+                  let images: string[] = [];
+                  try {
+                    images = JSON.parse(selectedProduct.images || '[]');
+                  } catch (e) {
+                    images = [];
+                  }
+                  const mainImage = images[0];
+                  return mainImage ? (
+                    <TouchableOpacity onPress={() => setZoomedImage(mainImage)}>
+                      <Image
+                        source={{ uri: forceHttps(mainImage) }}
+                        style={styles.productModalImage}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.productModalImagePlaceholder}>
+                      <Ionicons name="image-outline" size={48} color="#D1D5DB" />
+                    </View>
+                  );
+                })()}
+
+                {/* Product Name & Price */}
+                <View style={styles.productModalBasicInfo}>
+                  <Text style={styles.productModalName}>{selectedProduct.name}</Text>
+                  <Text style={styles.productModalPrice}>{formatVND(selectedProduct.price)}</Text>
+                </View>
+
+                {/* Product Info Grid */}
+                <View style={styles.productModalInfoGrid}>
+                  <View style={styles.productModalInfoItem}>
+                    <Text style={styles.productModalInfoLabel}>Danh mục</Text>
+                    <Text style={styles.productModalInfoValue}>
+                      {selectedProduct.categories?.[0]?.name || 'Chưa phân loại'}
+                    </Text>
+                  </View>
+                  <View style={styles.productModalInfoItem}>
+                    <Text style={styles.productModalInfoLabel}>Trạng thái</Text>
+                    <Text style={styles.productModalInfoValue}>
+                      {selectedProduct.isActive ? 'Đang bán' : 'Ngừng bán'}
+                    </Text>
+                  </View>
+                  <View style={styles.productModalInfoItem}>
+                    <Text style={styles.productModalInfoLabel}>Tồn kho</Text>
+                    <Text style={styles.productModalInfoValue}>
+                      {selectedProduct.stock || 0} sản phẩm
+                    </Text>
+                  </View>
+                  <View style={styles.productModalInfoItem}>
+                    <Text style={styles.productModalInfoLabel}>Mã SP</Text>
+                    <Text style={styles.productModalInfoValue}>#{selectedProduct.id}</Text>
+                  </View>
+                </View>
+
+                {/* Description */}
+                {selectedProduct.description && (
+                  <View style={styles.productModalSection}>
+                    <Text style={styles.productModalSectionTitle}>Mô tả</Text>
+                    <Text style={styles.productModalDescription}>
+                      {selectedProduct.description}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Compositions */}
+                {selectedProduct.compositions && selectedProduct.compositions.length > 0 && (
+                  <View style={styles.productModalSection}>
+                    <View style={styles.productModalSectionHeader}>
+                      <Ionicons name="flower-outline" size={18} color="#EC4899" />
+                      <Text style={styles.productModalSectionTitle}>Thành phần cấu tạo</Text>
+                    </View>
+                    {selectedProduct.compositions.map((comp: any, index: number) => {
+                      let compImages: string[] = [];
+                      try {
+                        compImages = JSON.parse(comp.childImage || '[]');
+                      } catch (e) {
+                        compImages = [];
+                      }
+                      const compImage = compImages[0];
+                      const isFlower = comp.childType === 'FLOWER';
+
+                      return (
+                        <View key={index} style={styles.compositionItem}>
+                          <View style={styles.compositionImageContainer}>
+                            {compImage ? (
+                              <Image
+                                source={{ uri: forceHttps(compImage) }}
+                                style={styles.compositionImage}
+                                resizeMode="cover"
+                              />
+                            ) : (
+                              <Ionicons
+                                name={isFlower ? 'flower-outline' : 'cube-outline'}
+                                size={20}
+                                color={isFlower ? '#EC4899' : '#6B7280'}
+                              />
+                            )}
+                          </View>
+                          <View style={styles.compositionInfo}>
+                            <Text style={styles.compositionName}>{comp.childName}</Text>
+                            <View style={styles.compositionMeta}>
+                              <View style={[styles.compositionTypeBadge, isFlower && styles.compositionTypeBadgeFlower]}>
+                                <Text style={[styles.compositionTypeText, isFlower && styles.compositionTypeTextFlower]}>
+                                  {isFlower ? '🌸 Hoa' : '📦 Phụ kiện'}
+                                </Text>
+                              </View>
+                              <Text style={styles.compositionQuantity}>SL: {comp.quantity}</Text>
+                              <Text style={styles.compositionPrice}>{formatVND(comp.childPrice)}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {/* Additional Images */}
+                {(() => {
+                  let images: string[] = [];
+                  try {
+                    images = JSON.parse(selectedProduct.images || '[]');
+                  } catch (e) {
+                    images = [];
+                  }
+                  return images.length > 1 ? (
+                    <View style={styles.productModalSection}>
+                      <Text style={styles.productModalSectionTitle}>Hình ảnh khác</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.additionalImagesContainer}>
+                        {images.slice(1).map((img: string, idx: number) => (
+                          <TouchableOpacity key={idx} onPress={() => setZoomedImage(img)}>
+                            <Image
+                              source={{ uri: forceHttps(img) }}
+                              style={styles.additionalImage}
+                              resizeMode="cover"
+                            />
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  ) : null;
+                })()}
+
+                <View style={{ height: 20 }} />
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Cancel Order Modal */}
+      <Modal
+        visible={showCancelModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowCancelModal(false);
+          setOrderToCancel(null);
+          setCancelReason('');
+        }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.cancelModalOverlay}>
+            <View style={styles.cancelModalContainer}>
+              {/* Header */}
+              <View style={styles.cancelModalHeader}>
+                <View style={styles.cancelModalIconContainer}>
+                  <Ionicons name="warning" size={28} color="#DC2626" />
+                </View>
+                <Text style={styles.cancelModalTitle}>Hủy đơn hàng</Text>
+                <Text style={styles.cancelModalSubtitle}>
+                  Đơn hàng #{orderToCancel?.code}
+                </Text>
+              </View>
+
+              {/* Warning Alert */}
+              <View style={styles.cancelWarning}>
+                <Ionicons name="information-circle" size={20} color="#D97706" />
+                <Text style={styles.cancelWarningText}>
+                  Sau khi hủy, yêu cầu hoàn tiền sẽ được tạo tự động.
+                </Text>
+              </View>
+
+              {/* Reason Input */}
+              <View style={styles.cancelReasonContainer}>
+                <Text style={styles.cancelReasonLabel}>
+                  Lý do hủy <Text style={styles.requiredStar}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.cancelReasonInput}
+                  placeholder="Nhập lý do hủy đơn..."
+                  placeholderTextColor="#9CA3AF"
+                  value={cancelReason}
+                  onChangeText={setCancelReason}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  editable={!isCancelling}
+                />
+              </View>
+
+              {/* Actions */}
+              <View style={styles.cancelModalActions}>
+                <TouchableOpacity
+                  style={styles.cancelModalCloseBtn}
+                  onPress={() => {
+                    setShowCancelModal(false);
+                    setOrderToCancel(null);
+                    setCancelReason('');
+                  }}
+                  disabled={isCancelling}
+                >
+                  <Text style={styles.cancelModalCloseBtnText}>Đóng</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.cancelModalConfirmBtn,
+                    (!cancelReason.trim() || isCancelling) && styles.cancelModalConfirmBtnDisabled
+                  ]}
+                  onPress={handleSubmitCancel}
+                  disabled={!cancelReason.trim() || isCancelling}
+                >
+                  {isCancelling ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.cancelModalConfirmBtnText}>Xác nhận hủy</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* Image Zoom Modal */}
       <Modal
         visible={!!zoomedImage}
@@ -698,7 +1019,7 @@ const OrdersHistory = () => {
             </TouchableOpacity>
             {zoomedImage && (
               <Image
-                source={{ uri: zoomedImage }}
+                source={{ uri: forceHttps(zoomedImage) }}
                 style={styles.imageZoomed}
                 resizeMode="contain"
               />
@@ -1248,6 +1569,337 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+  },
+  // Product Name Row (for clickable product items)
+  productNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+  viewDetailBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+    gap: 3,
+    marginLeft: 8,
+  },
+  viewDetailText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#047857',
+  },
+  // Product Detail Modal Styles
+  productModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  productModalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+  },
+  productModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  productModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  productModalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  productModalLoading: {
+    paddingVertical: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  productModalLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  productModalImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 16,
+    marginBottom: 16,
+    marginHorizontal: 20,
+  },
+  productModalImagePlaceholder: {
+    width: '100%',
+    height: 200,
+    marginHorizontal: 20,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  productModalBasicInfo: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  productModalName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  productModalPrice: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#E11D48',
+  },
+  productModalInfoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  productModalInfoItem: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 12,
+  },
+  productModalInfoLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  productModalInfoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  productModalSection: {
+    paddingHorizontal: 20,
+    marginTop: 16,
+  },
+  productModalSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  productModalSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  productModalDescription: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#4B5563',
+  },
+  compositionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  compositionImageContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  compositionImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+  },
+  compositionInfo: {
+    flex: 1,
+  },
+  compositionName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  compositionMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  compositionTypeBadge: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  compositionTypeBadgeFlower: {
+    backgroundColor: '#FDF2F8',
+  },
+  compositionTypeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  compositionTypeTextFlower: {
+    color: '#EC4899',
+  },
+  compositionQuantity: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  compositionPrice: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#047857',
+  },
+  additionalImagesContainer: {
+    marginTop: 8,
+  },
+  additionalImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  // Cancel Order Modal Styles
+  cancelModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  cancelModalContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 400,
+    overflow: 'hidden',
+  },
+  cancelModalHeader: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  cancelModalIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cancelModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#DC2626',
+    marginBottom: 4,
+  },
+  cancelModalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  cancelWarning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    margin: 20,
+    marginBottom: 0,
+    padding: 12,
+    borderRadius: 10,
+    gap: 10,
+  },
+  cancelWarningText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#92400E',
+  },
+  cancelReasonContainer: {
+    padding: 20,
+    paddingTop: 16,
+  },
+  cancelReasonLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  requiredStar: {
+    color: '#DC2626',
+  },
+  cancelReasonInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: '#1F2937',
+    backgroundColor: '#F9FAFB',
+    minHeight: 100,
+  },
+  cancelModalActions: {
+    flexDirection: 'row',
+    padding: 20,
+    paddingTop: 0,
+    gap: 12,
+  },
+  cancelModalCloseBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelModalCloseBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  cancelModalConfirmBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelModalConfirmBtnDisabled: {
+    backgroundColor: '#F3F4F6',
+  },
+  cancelModalConfirmBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFF',
   },
 });
 
