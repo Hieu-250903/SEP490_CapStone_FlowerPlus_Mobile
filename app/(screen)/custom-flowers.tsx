@@ -937,7 +937,7 @@ export default function ProductCustomImprovedUI() {
                           </Text>
                           {totalPrice > 0 && (
                             <Text style={styles.productPreviewPrice}>
-                              Tổng giá dự kiến: {totalPrice.toLocaleString("vi-VN")}đ
+                              Tổng giá: {totalPrice.toLocaleString("vi-VN")}đ
                             </Text>
                           )}
                           {product.compositions && product.compositions.length > 0 && (

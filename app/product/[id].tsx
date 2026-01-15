@@ -200,7 +200,7 @@ export default function ProductDetailScreen() {
             <Text style={styles.trustBadgeText} numberOfLines={2}>
               <Text style={styles.trustBadgeBold}>Giao 2-4 giờ</Text>
               {"\n"}
-              Nội thành TP Đà Nẵng
+              Nội thành TPHCM
             </Text>
           </View>
           <View style={[styles.trustBadge, styles.trustBadgeBlue]}>
@@ -504,7 +504,7 @@ export default function ProductDetailScreen() {
                     <View style={styles.bulletItem}>
                       <View style={styles.bullet} />
                       <Text style={styles.bulletText}>
-                        <Text style={styles.boldText}>Nội thành TP.Đà Nẵng:</Text> 2-4 giờ
+                        <Text style={styles.boldText}>Nội thành TP.HCM:</Text> 2-4 giờ
                       </Text>
                     </View>
                     <View style={styles.bulletItem}>

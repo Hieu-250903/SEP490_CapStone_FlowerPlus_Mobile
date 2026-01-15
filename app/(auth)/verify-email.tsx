@@ -47,13 +47,13 @@ export default function VerifyEmailScreen() {
             const res = await verifyEmailApi({
                 verificationToken: verificationToken,
                 verificationCode: verificationCode,
-            });
+            }) as any;
 
             if (res.success) {
                 setSuccess(true);
                 setTimeout(() => {
                     router.replace("/(auth)/login");
-                }, 2000);
+                }, 1500);
             } else {
                 Alert.alert("Lỗi", res.message || "Xác thực không thành công");
             }
@@ -79,8 +79,8 @@ export default function VerifyEmailScreen() {
                     </LinearGradient>
                     <Text style={styles.successTitle}>Xác Thực Thành Công!</Text>
                     <Text style={styles.successMessage}>
-                        Email của bạn đã được xác thực. Bạn có thể đăng nhập vào hệ thống
-                        ngay bây giờ.
+                        Email của bạn đã được xác thực. Bạn sẽ được chuyển đến trang
+                        đăng nhập ngay bây giờ.
                     </Text>
                     <View style={styles.successNote}>
                         <Ionicons name="mail-outline" size={20} color="#047857" />

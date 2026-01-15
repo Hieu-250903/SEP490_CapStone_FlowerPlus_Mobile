@@ -24,8 +24,21 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!userName || !password) {
-      Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin");
+    // Validate username
+    if (!userName.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập tên đăng nhập');
+      return;
+    }
+
+    // Validate password - empty
+    if (!password.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập mật khẩu');
+      return;
+    }
+
+    // Validate password - min length
+    if (password.length < 6) {
+      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 6 ký tự');
       return;
     }
 

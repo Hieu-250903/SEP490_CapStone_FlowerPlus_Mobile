@@ -34,14 +34,19 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const genderOptions = [
-    { value: 'MALE', label: 'Nam', icon: '♂️' },
-    { value: 'FEMALE', label: 'Nữ', icon: '♀️' },
-    { value: 'OTHER', label: 'Khác', icon: '⚧️' },
+    { value: 'male', label: 'Nam', icon: '♂️' },
+    { value: 'female', label: 'Nữ', icon: '♀️' },
+    { value: 'other', label: 'Khác', icon: '⚧️' },
   ];
 
   const validateStep1 = () => {
     if (!name.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập họ và tên');
+      return false;
+    }
+
+    if (name.trim().length < 2) {
+      Alert.alert('Lỗi', 'Họ tên tối thiểu 2 ký tự');
       return false;
     }
 
@@ -51,9 +56,9 @@ export default function RegisterScreen() {
       return false;
     }
 
-    const phoneRegex = /^[0-9]{10,11}$/;
+    const phoneRegex = /^(0|\+84)[0-9]{9,10}$/;
     if (!phone.trim() || !phoneRegex.test(phone)) {
-      Alert.alert('Lỗi', 'Số điện thoại không hợp lệ (10-11 số)');
+      Alert.alert('Lỗi', 'Số điện thoại không hợp lệ (VD: 0912345678 hoặc +84912345678)');
       return false;
     }
 
@@ -62,12 +67,38 @@ export default function RegisterScreen() {
 
   const validateStep2 = () => {
     if (!password || password.length < 6) {
-      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 6 ký tự');
+      Alert.alert('Lỗi', 'Mật khẩu tối thiểu 6 ký tự');
+      return false;
+    }
+
+    if (!confirmPassword || confirmPassword.length < 6) {
+      Alert.alert('Lỗi', 'Xác nhận mật khẩu tối thiểu 6 ký tự');
       return false;
     }
 
     if (password !== confirmPassword) {
       Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp');
+      return false;
+    }
+
+    if (!age) {
+      Alert.alert('Lỗi', 'Vui lòng nhập tuổi');
+      return false;
+    }
+
+    const ageNum = parseInt(age);
+    if (isNaN(ageNum) || ageNum < 0) {
+      Alert.alert('Lỗi', 'Tuổi không hợp lệ');
+      return false;
+    }
+
+    if (!gender) {
+      Alert.alert('Lỗi', 'Vui lòng chọn giới tính');
+      return false;
+    }
+
+    if (!address.trim() || address.trim().length < 5) {
+      Alert.alert('Lỗi', 'Địa chỉ tối thiểu 5 ký tự');
       return false;
     }
 
@@ -96,17 +127,33 @@ export default function RegisterScreen() {
       });
       console.log('Register response:', JSON.stringify(res, null, 2));
       if (res.success) {
-        Alert.alert(
-          'Đăng ký thành công!',
-          'Tài khoản của bạn đã được tạo. Vui lòng đăng nhập để tiếp tục.',
-          [
-            {
-              text: 'Đăng nhập',
-              onPress: () => router.replace('/(auth)/login'),
-            },
-          ],
-          { cancelable: false }
-        );
+        const verificationToken = res.data?.verificationToken;
+        if (verificationToken) {
+          Alert.alert(
+            'Đăng ký thành công!',
+            'Vui lòng kiểm tra email để xác thực tài khoản.',
+            [
+              {
+                text: 'Xác thực ngay',
+                onPress: () => router.replace(`/(auth)/verify-email?verificationToken=${verificationToken}`),
+              },
+            ],
+            { cancelable: false }
+          );
+        } else {
+          // Fallback if no verification token
+          Alert.alert(
+            'Đăng ký thành công!',
+            'Vui lòng kiểm tra email để xác thực tài khoản.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.replace('/(auth)/login'),
+              },
+            ],
+            { cancelable: false }
+          );
+        }
       } else {
         Alert.alert('Lỗi', res.message || 'Đăng ký thất bại');
       }
@@ -275,12 +322,14 @@ export default function RegisterScreen() {
 
               <View style={styles.divider}>
                 <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>Thông tin bổ sung (tùy chọn)</Text>
+                <Text style={styles.dividerText}>Thông tin cá nhân</Text>
                 <View style={styles.dividerLine} />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Giới tính</Text>
+                <Text style={styles.label}>
+                  Giới tính <Text style={styles.required}>*</Text>
+                </Text>
                 <TouchableOpacity
                   style={styles.inputContainer}
                   onPress={() => setShowGenderModal(true)}
@@ -294,7 +343,9 @@ export default function RegisterScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Tuổi</Text>
+                <Text style={styles.label}>
+                  Tuổi <Text style={styles.required}>*</Text>
+                </Text>
                 <View style={styles.inputContainer}>
                   <Ionicons name="calendar-outline" size={20} color="#9CA3AF" />
                   <TextInput
@@ -310,7 +361,9 @@ export default function RegisterScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Địa chỉ</Text>
+                <Text style={styles.label}>
+                  Địa chỉ <Text style={styles.required}>*</Text>
+                </Text>
                 <View style={[styles.inputContainer, styles.textAreaContainer]}>
                   <Ionicons name="location-outline" size={20} color="#9CA3AF" style={styles.textAreaIcon} />
                   <TextInput

@@ -1,11 +1,13 @@
-import AddressSelector from "@/components/AddressSelector";
-import VoucherCard from "@/components/VoucherCard";
-import { userProfileApi } from "@/services/auth";
+import { userProfileApi, authService } from "@/services/auth";
 import { checkoutOrder } from "@/services/order";
-import { calculateDiscount, getVouchers, Voucher } from "@/services/voucher";
+import { createOrUpdateAddress } from "@/services/address";
 import { addressDelivery } from "@/types";
 import { formatVND } from "@/utils/imageUtils";
 import { Ionicons } from "@expo/vector-icons";
+import { getVouchers, Voucher, calculateDiscount } from "@/services/voucher";
+import VoucherCard from "@/components/VoucherCard";
+import AddressSelector from "@/components/AddressSelector";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -21,7 +23,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
@@ -136,6 +137,22 @@ export default function CheckoutScreen() {
       return;
     }
 
+    // Validate delivery time (required)
+    if (!deliveryDate) {
+      Alert.alert('Lỗi', 'Vui lòng chọn thời gian giao hàng mong muốn');
+      return;
+    }
+
+    // Validate delivery time is in future
+    const now = new Date();
+    if (deliveryDate <= now) {
+      Alert.alert(
+        'Lỗi',
+        'Thời gian giao hàng phải lớn hơn thời gian hiện tại'
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await checkoutOrder({
@@ -204,44 +221,98 @@ export default function CheckoutScreen() {
     }
   };
 
+  const handleSetDefault = async (address: any) => {
+    try {
+      await createOrUpdateAddress({
+        id: address.id,
+        recipientName: address.recipientName,
+        phoneNumber: address.phoneNumber,
+        address: address.address,
+        province: address.province,
+        district: address.district,
+        ward: address.ward,
+        userId: address.userId,
+        default: true,
+      });
+
+      // Refresh address list
+      const res = await userProfileApi();
+      if (res.success) {
+        setAddressList(res.data.deliveryAddresses || []);
+        // Update selected address if it's the one being set as default
+        if (selectedAddress?.id === address.id) {
+          const updatedAddress = res.data.deliveryAddresses.find(
+            (addr: any) => addr.id === address.id
+          );
+          if (updatedAddress) {
+            setSelectedAddress(updatedAddress);
+          }
+        }
+      }
+
+      Alert.alert("Thành công", "Đã đặt làm địa chỉ mặc định");
+    } catch (error: any) {
+      console.error("Error setting default address:", error);
+      Alert.alert(
+        "Lỗi",
+        error?.response?.data?.message || "Không thể đặt địa chỉ mặc định"
+      );
+    }
+  };
+
   const renderAddressItem = (item: any) => {
     const isSelected = selectedAddress?.id === item.id;
+    const isExpanded = isAddressExpanded;
+
     return (
-      <TouchableOpacity
-        key={item.id}
-        style={[styles.addressCard, isSelected && styles.addressCardSelected]}
-        onPress={() => handleSelectAddress(item)}
-      >
-        <View style={styles.radioContainer}>
-          <View
-            style={[styles.radioOuter, isSelected && styles.radioOuterSelected]}
+      <View key={item.id} style={{ marginBottom: 12 }}>
+        <TouchableOpacity
+          style={[styles.addressCard, isSelected && styles.addressCardSelected]}
+          onPress={() => handleSelectAddress(item)}
+        >
+          <View style={styles.radioContainer}>
+            <View
+              style={[styles.radioOuter, isSelected && styles.radioOuterSelected]}
+            >
+              {isSelected && <View style={styles.radioInner} />}
+            </View>
+          </View>
+          <View style={styles.addressContent}>
+            <View style={styles.addressHeaderRow}>
+              <Text style={styles.addressName}>{item.recipientName}</Text>
+              {item.default && (
+                <View style={styles.defaultBadge}>
+                  <Ionicons name="star" size={12} color="#3B82F6" style={{ marginRight: 4 }} />
+                  <Text style={styles.defaultText}>Mặc định</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.addressPhone}>{item.phoneNumber}</Text>
+            <Text style={styles.addressText}>
+              {item.address}, {item.ward}, {item.district}, {item.province}
+            </Text>
+          </View>
+          {isSelected && (
+            <Ionicons
+              name="checkmark-circle"
+              size={24}
+              color="#BE123C"
+              style={styles.checkIcon}
+            />
+          )}
+        </TouchableOpacity>
+
+        {/* Set Default Button - Only show when expanded and not default */}
+        {isExpanded && !item.default && (
+          <TouchableOpacity
+            style={styles.setDefaultButton}
+            onPress={() => handleSetDefault(item)}
           >
-            {isSelected && <View style={styles.radioInner} />}
-          </View>
-        </View>
-        <View style={styles.addressContent}>
-          <View style={styles.addressHeaderRow}>
-            <Text style={styles.addressName}>{item.recipientName}</Text>
-            {item.default && (
-              <View style={styles.defaultBadge}>
-                <Text style={styles.defaultText}>Mặc định</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.addressPhone}>{item.phoneNumber}</Text>
-          <Text style={styles.addressText}>
-            {item.address}, {item.ward}, {item.district}, {item.province}
-          </Text>
-        </View>
-        {isSelected && (
-          <Ionicons
-            name="checkmark-circle"
-            size={24}
-            color="#BE123C"
-            style={styles.checkIcon}
-          />
+            <Ionicons name="star-outline" size={16} color="#3B82F6" />
+            <Text style={styles.setDefaultButtonText}>Đặt làm mặc định</Text>
+          </TouchableOpacity>
         )}
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -288,47 +359,83 @@ export default function CheckoutScreen() {
       return;
     }
 
-    const phoneRegex = /^(0)(3|5|7|8|9)[0-9]{8}$/;
+    const phoneRegex = /^(0|\+84)[0-9]{9,10}$/;
     if (!phoneRegex.test(newAddress.phoneNumber)) {
       Alert.alert(
-        "Số điện thoại không hợp lệ",
-        "Vui lòng nhập số điện thoại Việt Nam hợp lệ (10 số, bắt đầu bằng 03, 05, 07, 08, 09)"
+        'Lỗi',
+        'Số điện thoại không hợp lệ (VD: 0912345678 hoặc +84912345678)'
       );
       return;
     }
 
-    // Tạo địa chỉ tạm để sử dụng cho đơn hàng (không lưu vào backend)
-    const tempAddress: addressDelivery = {
-      id: Date.now(), // ID tạm
-      recipientName: newAddress.recipientName,
-      phoneNumber: newAddress.phoneNumber,
-      address: newAddress.address,
-      province: newAddress.province,
-      district: newAddress.district,
-      ward: newAddress.ward,
-      default: false,
-      userId: 0,
-    };
+    setIsCreatingAddress(true);
+    try {
+      // Save address to database (like website)
+      const userId = await authService.getUserId();
+      const addressData = {
+        recipientName: newAddress.recipientName,
+        phoneNumber: newAddress.phoneNumber,
+        address: newAddress.address,
+        province: newAddress.province,
+        district: newAddress.district,
+        ward: newAddress.ward,
+        default: addressList.length === 0, // First address is default
+        userId: userId ? parseInt(userId) : 0,
+      };
 
-    // Sử dụng địa chỉ vừa nhập cho đơn hàng
-    setSelectedAddress(tempAddress);
-    setShowCreateAddressModal(false);
+      const response = await createOrUpdateAddress(addressData);
 
-    // Reset form
-    setNewAddress({
-      address: "",
-      recipientName: "",
-      phoneNumber: "",
-      province: "",
-      district: "",
-      ward: "",
-      provinceCode: null,
-      districtCode: null,
-      wardCode: null,
-      default: false,
-    });
+      if (response.success) {
+        // Create address object from saved data
+        const savedAddress: addressDelivery = {
+          id: response.data?.id || Date.now(),
+          recipientName: newAddress.recipientName,
+          phoneNumber: newAddress.phoneNumber,
+          address: newAddress.address,
+          province: newAddress.province,
+          district: newAddress.district,
+          ward: newAddress.ward,
+          default: addressList.length === 0,
+          userId: userId ? parseInt(userId) : 0,
+        };
 
-    Alert.alert("Thành công", "Đã sử dụng địa chỉ cho đơn hàng");
+        // Use saved address for this order
+        setSelectedAddress(savedAddress);
+        setShowCreateAddressModal(false);
+
+        // Reset form
+        setNewAddress({
+          address: "",
+          recipientName: "",
+          phoneNumber: "",
+          province: "",
+          district: "",
+          ward: "",
+          provinceCode: null,
+          districtCode: null,
+          wardCode: null,
+          default: false,
+        });
+
+        // Refresh address list
+        const res = await userProfileApi();
+        if (res.success) {
+          setAddressList(res.data.deliveryAddresses || []);
+        }
+
+        Alert.alert("Thành công", "Đã lưu và sử dụng địa chỉ mới");
+      } else {
+        Alert.alert("Lỗi", response.message || "Không thể lưu địa chỉ");
+      }
+    } catch (error: any) {
+      console.error("Error creating address:", error);
+      Alert.alert(
+        "Lỗi",
+        error?.response?.data?.message || "Không thể lưu địa chỉ. Vui lòng thử lại."
+      );
+    } finally {
+      setIsCreatingAddress(false);
+    }
   };
 
   return (
@@ -1158,6 +1265,39 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: "#FFF",
     fontSize: 16,
+    fontWeight: "600",
+  },
+
+  // Set Default Button
+  setDefaultButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 8,
+    borderRadius: 8,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    gap: 6,
+  },
+  setDefaultButtonText: {
+    fontSize: 13,
+    color: "#3B82F6",
+    fontWeight: "500",
+  },
+  defaultBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#DBEAFE",
+    borderRadius: 12,
+  },
+  defaultText: {
+    fontSize: 11,
+    color: "#3B82F6",
     fontWeight: "600",
   },
 });

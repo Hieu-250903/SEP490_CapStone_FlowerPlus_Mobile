@@ -124,6 +124,36 @@ const UserInfoScreen = () => {
             return;
         }
 
+        // Validate email
+        if (!formData.email.trim()) {
+            Alert.alert('Lỗi', 'Vui lòng nhập email');
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            Alert.alert('Lỗi', 'Email không hợp lệ');
+            return;
+        }
+
+        // Validate phone if provided
+        if (formData.phone && formData.phone.trim()) {
+            const phoneRegex = /^(0|\+84)[0-9]{9,10}$/;
+            if (!phoneRegex.test(formData.phone)) {
+                Alert.alert('Lỗi', 'Số điện thoại không hợp lệ (VD: 0912345678 hoặc +84912345678)');
+                return;
+            }
+        }
+
+        // Validate birthdate format if provided
+        if (formData.birthDate && formData.birthDate.trim()) {
+            const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+            if (!dateRegex.test(formData.birthDate)) {
+                Alert.alert('Lỗi', 'Ngày sinh không đúng định dạng (dd/mm/yyyy)');
+                return;
+            }
+        }
+
         setIsSaving(true);
         try {
             const dataToSend: UpdateProfileData = {
@@ -133,7 +163,7 @@ const UserInfoScreen = () => {
                 phone: formData.phone.trim() || undefined,
                 birthDate: formatDateForBackend(formData.birthDate) || undefined,
                 gender: formData.gender,
-                avatar: user?.avatar, // Preserve current avatar
+                avatar: user?.avatar,
             };
 
             await updateProfileApi(dataToSend);
@@ -176,7 +206,15 @@ const UserInfoScreen = () => {
             return;
         }
         if (newPassword.length < 6) {
-            Alert.alert('Lỗi', 'Mật khẩu mới phải có ít nhất 6 ký tự');
+            Alert.alert('Lỗi', 'Mật khẩu mới tối thiểu 6 ký tự');
+            return;
+        }
+        if (!confirmNewPassword.trim()) {
+            Alert.alert('Lỗi', 'Vui lòng nhập xác nhận mật khẩu');
+            return;
+        }
+        if (confirmNewPassword.length < 6) {
+            Alert.alert('Lỗi', 'Xác nhận mật khẩu tối thiểu 6 ký tự');
             return;
         }
         if (newPassword !== confirmNewPassword) {
