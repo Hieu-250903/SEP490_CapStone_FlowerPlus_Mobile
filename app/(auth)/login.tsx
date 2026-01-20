@@ -83,12 +83,14 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
             <LinearGradient
@@ -183,6 +185,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingVertical: 32,
+    paddingBottom: 100,
   },
   header: {
     alignItems: "center",

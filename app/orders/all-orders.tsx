@@ -1,9 +1,9 @@
-import { getOrders, cancelOrder, type Order } from "@/services/order";
+import { cancelOrder, getOrders, type Order } from "@/services/order";
 import { getProductDetail } from "@/services/product";
 import { forceHttps } from "@/utils/imageUtils";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -926,8 +926,9 @@ const OrdersHistory = () => {
         }}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
           style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <View style={styles.cancelModalOverlay}>
             <View style={styles.cancelModalContainer}>

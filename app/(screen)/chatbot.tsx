@@ -1,24 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { authService } from '@/services/auth';
+import { ChatMessage, getChatHistory, sendChatMessage } from '@/services/chatbot';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
+    ActivityIndicator,
     FlatList,
     Image,
     KeyboardAvoidingView,
     Platform,
-    ActivityIndicator,
     SafeAreaView,
-    Alert
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { getChatHistory, sendChatMessage, ChatMessage } from '@/services/chatbot';
-import { authService } from '@/services/auth';
-import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ChatbotScreen() {
     const router = useRouter();
@@ -245,8 +244,8 @@ export default function ChatbotScreen() {
 
             {/* Input Area */}
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 {selectedImage && (
                     <View style={styles.imagePreviewContainer}>

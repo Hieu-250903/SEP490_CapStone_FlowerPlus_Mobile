@@ -1,13 +1,12 @@
-import { userProfileApi, authService } from "@/services/auth";
-import { checkoutOrder } from "@/services/order";
+import AddressSelector from "@/components/AddressSelector";
+import VoucherCard from "@/components/VoucherCard";
 import { createOrUpdateAddress } from "@/services/address";
+import { authService, userProfileApi } from "@/services/auth";
+import { checkoutOrder } from "@/services/order";
+import { calculateDiscount, getVouchers, Voucher } from "@/services/voucher";
 import { addressDelivery } from "@/types";
 import { formatVND } from "@/utils/imageUtils";
 import { Ionicons } from "@expo/vector-icons";
-import { getVouchers, Voucher, calculateDiscount } from "@/services/voucher";
-import VoucherCard from "@/components/VoucherCard";
-import AddressSelector from "@/components/AddressSelector";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -23,6 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
@@ -797,13 +797,13 @@ export default function CheckoutScreen() {
             <View style={{ width: 40 }} />
           </View>
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            behavior={Platform.OS === "ios" ? "padding" : "padding"}
             style={{ flex: 1 }}
             keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
           >
             <ScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ padding: 16 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >

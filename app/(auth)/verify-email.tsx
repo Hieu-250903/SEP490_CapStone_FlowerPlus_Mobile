@@ -96,12 +96,14 @@ export default function VerifyEmailScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                behavior={Platform.OS === "ios" ? "padding" : "padding"}
                 style={styles.keyboardView}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
             >
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                 >
                     <View style={styles.header}>
                         <TouchableOpacity
@@ -204,6 +206,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         paddingHorizontal: 24,
         paddingVertical: 16,
+        paddingBottom: 100,
     },
     header: {
         marginBottom: 24,

@@ -1,29 +1,44 @@
+import { authService } from "@/services/auth";
+import { getCart } from "@/services/cart";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { useEffect, useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { getCart } from "@/services/cart";
+import { useEffect, useRef, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
 function CartTabIcon({ color, size }: { color: string; size: number }) {
   const [cartCount, setCartCount] = useState(0);
+  const isMounted = useRef(true);
 
   useEffect(() => {
+    isMounted.current = true;
     fetchCartCount();
-    // Refresh cart count every 3 seconds
-    const interval = setInterval(fetchCartCount, 3000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchCartCount, 5000);
+    return () => {
+      isMounted.current = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const fetchCartCount = async () => {
     try {
+      const isAuth = await authService.isAuthenticated();
+      if (!isAuth || !isMounted.current) {
+        setCartCount(0);
+        return;
+      }
+
       const response = await getCart();
+      if (!isMounted.current) return;
+
       if (response?.data?.items) {
         setCartCount(response.data.items.length);
       } else {
         setCartCount(0);
       }
     } catch (error) {
-      setCartCount(0);
+      if (isMounted.current) {
+        setCartCount(0);
+      }
     }
   };
 

@@ -6,12 +6,11 @@ import {
   getProductsByType
 } from "@/services/product";
 import { Product } from "@/types";
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { formatVND } from "@/utils/imageUtils";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +26,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 const { width } = Dimensions.get("window");
 
@@ -430,13 +430,14 @@ export default function ProductCustomImprovedUI() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={0}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* Header */}
         <View style={styles.header}>

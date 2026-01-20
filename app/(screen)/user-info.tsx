@@ -1,9 +1,9 @@
-import { getUserInfoApi, updateProfileApi, changePasswordApi, UpdateProfileData } from "@/services/auth";
+import { changePasswordApi, getUserInfoApi, updateProfileApi, UpdateProfileData } from "@/services/auth";
 import { uploadImage } from "@/services/upload";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -583,8 +583,9 @@ const UserInfoScreen = () => {
                 }}
             >
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
                     style={{ flex: 1 }}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
                 >
                     <View style={styles.modalOverlay}>
                         <View style={styles.modalContainer}>
