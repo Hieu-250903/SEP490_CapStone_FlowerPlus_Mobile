@@ -201,19 +201,7 @@ export default function ProfileScreen() {
             />
           </View>
         </View>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Lịch sử giao dịch</Text>
-          <View style={styles.menuSection}>
-            <MenuItem
-              icon="card-outline"
-              title="Thanh toán"
-              subtitle="Xem lịch sử thanh toán"
-              onPress={() => {
-                router.push("/(screen)/transactions-history");
-              }}
-            />
-          </View>
-        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tài khoản</Text>
           <View style={styles.menuSection}>

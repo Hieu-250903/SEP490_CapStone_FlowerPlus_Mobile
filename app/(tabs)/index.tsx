@@ -1,5 +1,7 @@
 import ProductCard from "@/components/ProductCard";
 import { getAllProduct } from "@/services/product";
+import { getPersonalizedRecommendations } from "@/services/recommendation";
+import { authService } from "@/services/auth";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState } from "react";
@@ -106,13 +108,48 @@ export default function HomeScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [products, setProducts] = useState<any[]>([]);
   const [categorizedProducts, setCategorizedProducts] = useState<CategoryGroup[]>([]);
+  const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const carouselRef = useRef<FlatList>(null);
 
   useEffect(() => {
     fetchProducts();
+    fetchRecommendations();
   }, []);
+
+  const fetchRecommendations = async () => {
+    try {
+      const isAuth = await authService.isAuthenticated();
+      if (!isAuth) return;
+
+      const response = await getPersonalizedRecommendations(10);
+      if (response?.data?.recommendations) {
+        const transformed = response.data.recommendations.map((rec: any) => {
+          const images = parseImages(rec.images);
+          return {
+            id: rec.product_id,
+            name: rec.name,
+            price: rec.price,
+            discountPrice: rec.price,
+            image:
+              images.length > 0
+                ? images[0]
+                : "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTixbrVNY9XIHQBZ1iehMIV0Z9AtHB9dp46lg&s",
+            images: rec.images,
+            description: "",
+            categoryId: undefined,
+            categoryName: undefined,
+            stock: rec.stock,
+            isRecommendation: true,
+          };
+        });
+        setRecommendedProducts(transformed);
+      }
+    } catch (error) {
+      console.log("Error fetching recommendations:", error);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -302,6 +339,30 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+
+        {/* Recommended Products Section */}
+        {recommendedProducts.length > 0 && (
+          <View
+            style={[styles.sectionWrapper, { backgroundColor: "#FFF0F5" }]}
+          >
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>✨ Gợi ý cho bạn</Text>
+            </View>
+
+            <FlatList
+              data={recommendedProducts}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id.toString()}
+              contentContainerStyle={styles.productsHorizontal}
+              renderItem={({ item }) => (
+                <View style={{ width: width * 0.45 }}>
+                  <ProductCard product={item} />
+                </View>
+              )}
+            />
+          </View>
+        )}
 
         {/* Dynamic Category Sections */}
         <View style={styles.productSection}>

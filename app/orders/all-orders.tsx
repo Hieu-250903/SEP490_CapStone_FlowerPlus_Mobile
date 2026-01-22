@@ -410,7 +410,7 @@ const OrdersHistory = () => {
           </View>
           <View style={styles.orderSummary}>
             <Text style={styles.orderTotal}>{formatVND(order.total)}</Text>
-            <Text style={styles.orderDate}>{formatDate(order.createdAt)}</Text>
+            <Text style={styles.orderDate}>{formatDate(order.requestDeliveryTime)}</Text>
           </View>
         </TouchableOpacity>
 

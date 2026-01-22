@@ -1,7 +1,7 @@
 import { authService } from '@/services/auth';
 import { ChatMessage, getChatHistory, sendChatMessage } from '@/services/chatbot';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -26,7 +26,7 @@ export default function ChatbotScreen() {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [userId, setUserId] = useState<number | null>(null);
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
     const flatListRef = useRef<FlatList>(null);
 
     useEffect(() => {
@@ -109,27 +109,23 @@ export default function ChatbotScreen() {
     };
 
     const handleSend = async () => {
-        if ((!inputMessage.trim() && !selectedImage) || sending || !userId) return;
+        if (!inputMessage.trim() || sending || !userId) return;
 
         const userMsg: ChatMessage = {
             id: `user-${Date.now()}`,
-            message: inputMessage.trim() || 'Hãy phân tích hình ảnh này',
+            message: inputMessage.trim(),
             sender: 'user',
             timestamp: new Date(),
-            imageUrl: selectedImage || undefined,
         };
 
         setMessages((prev) => [...prev, userMsg]);
         setInputMessage('');
-        const imageToSend = selectedImage;
-        setSelectedImage(null);
         setSending(true);
 
         try {
             const response = await sendChatMessage({
                 message: userMsg.message,
                 userId: userId,
-                imageUrl: imageToSend || undefined,
             });
 
             const botMsg: ChatMessage = {
@@ -151,32 +147,6 @@ export default function ChatbotScreen() {
             setMessages((prev) => [...prev, errorMsg]);
         } finally {
             setSending(false);
-        }
-    };
-
-    const pickImage = async () => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.5,
-            base64: true,
-        });
-
-        if (!result.canceled && result.assets && result.assets.length > 0) {
-            // Assuming the API expects a base64 string or a URL. 
-            // If it expects a file upload, we might need to adjust this.
-            // Based on web code: setUploadedImageUrl(url) from UploadImage component.
-            // The web component seems to upload first then return URL.
-            // For simplicity here, let's assume we send base64 data URI if the backend supports it,
-            // OR we might need to implement the upload logic similar to web.
-            // Checking web implementation: `uploadedImageUrl` is passed.
-            // The web uses `UploadImage` component which likely uploads to a server (Cloudinary/S3 etc) and returns URL.
-            // Since I removed `UploadImageRN` earlier, I might need to implement a simple upload or just pass base64 if supported.
-            // Let's assume for now we pass the base64 data URI.
-            const asset = result.assets[0];
-            const base64 = `data:${asset.mimeType};base64,${asset.base64}`;
-            setSelectedImage(base64);
         }
     };
 
@@ -247,29 +217,18 @@ export default function ChatbotScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
-                {selectedImage && (
-                    <View style={styles.imagePreviewContainer}>
-                        <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
-                        <TouchableOpacity onPress={() => setSelectedImage(null)} style={styles.removeImageButton}>
-                            <Ionicons name="close-circle" size={24} color="#EF4444" />
-                        </TouchableOpacity>
-                    </View>
-                )}
                 <View style={styles.inputContainer}>
-                    <TouchableOpacity onPress={pickImage} style={styles.iconButton}>
-                        <Ionicons name="image-outline" size={24} color="#6B7280" />
-                    </TouchableOpacity>
                     <TextInput
                         style={styles.input}
                         value={inputMessage}
                         onChangeText={setInputMessage}
-                        placeholder={selectedImage ? "Mô tả ảnh (tùy chọn)..." : "Nhập tin nhắn..."}
+                        placeholder="Nhập tin nhắn..."
                         multiline
                     />
                     <TouchableOpacity
                         onPress={handleSend}
-                        disabled={(!inputMessage.trim() && !selectedImage) || sending}
-                        style={[styles.sendButton, ((!inputMessage.trim() && !selectedImage) || sending) && styles.sendButtonDisabled]}
+                        disabled={!inputMessage.trim() || sending}
+                        style={[styles.sendButton, (!inputMessage.trim() || sending) && styles.sendButtonDisabled]}
                     >
                         {sending ? (
                             <ActivityIndicator size="small" color="#FFF" />
